@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AURA IDE</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="node_modules/monaco-editor/min/vs/editor/editor.main.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="node_modules/@fortawesome/fontawesome-free/css/all.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/file-icon-vectors@1.0.0/dist/file-icon-vectors.min.css" />
+</head>
+<body class="theme-dark">
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <button id="openFolderBtn" class="toolbar-button">
+        <i class="fas fa-folder"></i> <!-- Updated Font Awesome folder icon -->
+        <span>Open Folder</span>
+      </button>
+      <button id="saveFileBtn" class="toolbar-button">
+        <i class="fas fa-save"></i> <!-- Updated Font Awesome save icon -->
+        <span>Save</span>
+      </button>
+    </div>
+    <div class="toolbar-right">
+      <button id="themeToggle" class="toolbar-button">
+        <i class="fas fa-sun"></i> <!-- Font Awesome sun icon -->
+      </button>
+    </div>
+  </div>
+  <div class="main-container">
+    <div class="file-tree-container">
+      <div class="file-tree-header">
+        <span>EXPLORER </span>
+        <span id="refresh-button" style="cursor: pointer;"><i class="fa-solid fa-arrows-rotate"></i></span>        
+      </div>
+      <div id="file-tree" class="file-tree"></div>
+      
+    </div>
+    <div class="editor-container">
+      <div id="tabs" class="tabs"></div>
+      <div id="monaco-editor" class="monaco-editor"></div>
+      <div id="media-container" class="media-container"></div> <!-- New container for media -->
+    </div>
+  </div>
+  <div class="status-bar">
+    <div class="status-item">Ready</div>
+    <div class="status-item" id="editorStatus">Line 1, Column 1</div>
+  </div>
+  <script src="node_modules/monaco-editor/min/vs/loader.js"></script>
+  <script src="node_modules/sortablejs/Sortable.min.js"></script>
+  <script>
+    require.config({ paths: { vs: 'node_modules/monaco-editor/min/vs' } });
+  </script>
+    <script src="renderer.js"></script>
+</body>
+</html>
