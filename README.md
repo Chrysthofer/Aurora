@@ -1,2 +1,2 @@
-# aurora
+# Aurora
 AURORA IDE
