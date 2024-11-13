@@ -1,6 +1,10 @@
 let editor;
 let openFiles = new Map();
 let activeFile = null;
+let compiling = false;
+let terminal = null;
+
+
 
 
 // Tab Manager with improved animations and layout
@@ -595,6 +599,45 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
+// Initialize Terminal.js
+function initializeTerminal() {
+  terminal = new Terminal({
+    fontSize: 14,
+    fontFamily: 'JetBrains Mono, monospace',
+    theme: {
+      background: '#1e1e1e',
+      foreground: '#d4d4d4'
+    },
+    cursorBlink: true
+  });
+  
+  const terminalContainer = document.getElementById('terminal');
+  terminal.open(terminalContainer);
+  
+  // Clear terminal with Ctrl+K
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.key === 'k') {
+      e.preventDefault();
+      terminal.clear();
+    }
+  });
+}
+
+// Utility function to write to terminal with colors
+function writeToTerminal(text, type = 'info') {
+  if (!terminal) return;
+  
+  const timestamp = new Date().toLocaleTimeString();
+  const colorMap = {
+    'info': '\x1b[36m',    // Cyan
+    'error': '\x1b[31m',   // Red
+    'success': '\x1b[32m', // Green
+    'command': '\x1b[33m'  // Yellow
+  };
+  
+  const color = colorMap[type] || colorMap.info;
+  terminal.writeln(`${color}[${timestamp}]\x1b[0m ${text}`);
+}
 
 // Initialize Monaco Editor
 async function initMonaco() {
@@ -752,10 +795,128 @@ document.addEventListener('DOMContentLoaded', () => {
   TabManager.loadTabOrder(); // Load tab order on initialization
 });
 
+document.getElementById('cmmcomp').addEventListener('click', async () => {
+  if (!activeFile || compiling) return;
+  
+  const button = document.getElementById('cmmcomp');
+  const icon = button.querySelector('i');
+  
+  try {
+    compiling = true;
+    button.disabled = true;
+    icon.className = 'fas fa-spinner fa-spin';
+    
+    const content = editor.getValue();
+    const inputDir = activeFile.substring(0, activeFile.lastIndexOf('\\') + 1);
+    const inputFile = activeFile.split('\\').pop();
+    
+    writeToTerminal('Starting CMM compilation...', 'command');
+    writeToTerminal(`Input file: ${inputFile}`, 'info');
+    writeToTerminal(`Working directory: ${inputDir}`, 'info');
+    
+    const result = await window.electronAPI.compile({
+      compiler: '/compilers/cmmcomp.exe',
+      content: content,
+      filePath: activeFile,
+      workingDir: inputDir,
+      // Specify output path in the same directory as input
+      outputPath: inputDir
+    });
+    
+    if (result.stderr) {
+      // Split error messages by line and write them individually
+      result.stderr.split('\n').forEach(line => {
+        if (line.trim()) {
+          writeToTerminal(line, 'error');
+        }
+      });
+    }
+    
+    if (result.stdout) {
+      // Split success messages by line and write them individually
+      result.stdout.split('\n').forEach(line => {
+        if (line.trim()) {
+          writeToTerminal(line, 'success');
+        }
+      });
+    }
+    
+    writeToTerminal('CMM compilation finished.', 'info');
+    
+  } catch (error) {
+    console.error('Compilation error:', error);
+    writeToTerminal(`Compilation error: ${error.message}`, 'error');
+  } finally {
+    compiling = false;
+    button.disabled = false;
+    icon.className = 'fas fa-code';
+  }
+});
+
+// Update the ASM compiler event listener
+document.getElementById('asmcomp').addEventListener('click', async () => {
+  if (!activeFile || compiling) return;
+  
+  const button = document.getElementById('asmcomp');
+  const icon = button.querySelector('i');
+  
+  try {
+    compiling = true;
+    button.disabled = true;
+    icon.className = 'fas fa-spinner fa-spin';
+    
+    const content = editor.getValue();
+    const inputDir = activeFile.substring(0, activeFile.lastIndexOf('\\') + 1);
+    const inputFile = activeFile.split('\\').pop();
+    
+    writeToTerminal('Starting ASM compilation...', 'command');
+    writeToTerminal(`Input file: ${inputFile}`, 'info');
+    writeToTerminal(`Working directory: ${inputDir}`, 'info');
+    
+    const result = await window.electronAPI.compile({
+      compiler: '/compilers/asmcomp.exe',
+      content: content,
+      filePath: activeFile,
+      workingDir: inputDir,
+      // Specify output path in the same directory as input
+      outputPath: inputDir
+    });
+    
+    if (result.stderr) {
+      // Split error messages by line and write them individually
+      result.stderr.split('\n').forEach(line => {
+        if (line.trim()) {
+          writeToTerminal(line, 'error');
+        }
+      });
+    }
+    
+    if (result.stdout) {
+      // Split success messages by line and write them individually
+      result.stdout.split('\n').forEach(line => {
+        if (line.trim()) {
+          writeToTerminal(line, 'success');
+        }
+      });
+    }
+    
+    writeToTerminal('ASM compilation finished.', 'info');
+    
+  } catch (error) {
+    console.error('Compilation error:', error);
+    writeToTerminal(`Compilation error: ${error.message}`, 'error');
+  } finally {
+    compiling = false;
+    button.disabled = false;
+    icon.className = 'fas fa-microchip';
+  }
+});
+
 // Initialize everything
 // Update the window.onload to include the refresh button initialization
 window.onload = () => {
   initMonaco();
+  
   TabManager.init();
   
   // Existing event listeners
@@ -788,3 +949,45 @@ window.onload = () => {
     }, 300);
   });
 };
+
+const verticalResizer = document.querySelector('.resizer-vertical');
+const horizontalResizer = document.querySelector('.resizer-horizontal');
+const fileTreeContainer = document.querySelector('.file-tree-container');
+const terminalContainer = document.querySelector('.terminal-container');
+const editorContainer = document.querySelector('.editor-container');
+
+// Redimensionamento horizontal (file-tree)
+verticalResizer.addEventListener('mousedown', (event) => {
+  event.preventDefault();
+  
+  document.addEventListener('mousemove', resizeFileTree);
+  document.addEventListener('mouseup', stopResize);
+});
+
+function resizeFileTree(event) {
+  fileTreeContainer.style.width = `${event.clientX}px`;
+}
+
+function stopResize() {
+  document.removeEventListener('mousemove', resizeFileTree);
+  document.removeEventListener('mouseup', stopResize);
+}
+
+// Redimensionamento vertical (terminal)
+horizontalResizer.addEventListener('mousedown', (event) => {
+  event.preventDefault();
+  
+  document.addEventListener('mousemove', resizeTerminal);
+  document.addEventListener('mouseup', stopTerminalResize);
+});
+
+function resizeTerminal(event) {
+  const height = window.innerHeight - event.clientY + 1; // Ajuste baseado na altura da status bar e toolbar
+  terminalContainer.style.height = `${height}px`;
+  editorContainer.style.flex = `1 1 ${window.innerHeight - height}px`;
+}
+
+function stopTerminalResize() {
+  document.removeEventListener('mousemove', resizeTerminal);
+  document.removeEventListener('mouseup', stopTerminalResize);
+}

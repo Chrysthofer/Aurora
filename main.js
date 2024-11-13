@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const { autoUpdater } = require('electron-updater');
+const { exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 (async () => {
@@ -132,4 +133,42 @@ autoUpdater.on('update-downloaded', () => {
 // Evento para tratar erros de atualização
 autoUpdater.on('error', (error) => {
   dialog.showErrorBox('Erro de atualização', `Erro ao atualizar o aplicativo: ${error}`);
+});
+
+ipcMain.handle('compile', async (event, { compiler, content, filePath, workingDir }) => {
+  return new Promise((resolve, reject) => {
+    const compilerPath = path.join(__dirname, compiler);
+    
+    const options = {
+      cwd: workingDir, // Define o diretório de trabalho como o diretório do arquivo de entrada
+      maxBuffer: 1024 * 1024 // Aumenta o buffer para 1MB para lidar com saídas maiores
+    };
+    
+    // Primeiro salva o arquivo para garantir que está atualizado
+    try {
+      require('fs').writeFileSync(filePath, content);
+    } catch (error) {
+      reject(error);
+      return;
+    }
+    
+    // Executa o compilador
+    const process = exec(`"${compilerPath}" "${filePath}"`, options, (error, stdout, stderr) => {
+      if (error && !stderr) {
+        reject(error);
+        return;
+      }
+      resolve({ stdout, stderr });
+    });
+    
+    // Captura a saída em tempo real
+    process.stdout.on('data', (data) => {
+      // Você pode implementar um IPC aqui para enviar atualizações em tempo real se desejar
+      console.log(data);
+    });
+    
+    process.stderr.on('data', (data) => {
+      console.error(data);
+    });
+  });
 });

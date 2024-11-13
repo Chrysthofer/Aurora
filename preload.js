@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getLastFolder: () => store.get('lastFolder'),
   setLastFolder: (path) => store.set('lastFolder', path),
   openFolder: () => ipcRenderer.invoke('open-folder'),
-  refreshFolder: () => ipcRenderer.invoke('refreshFolder')
+  refreshFolder: () => ipcRenderer.invoke('refreshFolder'),
+  compile: (options) => ipcRenderer.invoke('compile', options)
+
 });
 
