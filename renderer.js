@@ -5,8 +5,6 @@ let compiling = false;
 let terminal = null;
 
 
-
-
 // Tab Manager with improved animations and layout
 const TabManager = {
   init() {
@@ -991,3 +989,160 @@ function stopTerminalResize() {
   document.removeEventListener('mousemove', resizeTerminal);
   document.removeEventListener('mouseup', stopTerminalResize);
 }
+
+// Adicione estes estilos ao seu CSS existente
+const newStyle = document.createElement('style');
+newStyle.textContent = `
+  .toolbar-icon {
+    cursor: pointer;
+    margin: 0 8px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+
+  .toolbar-icon:hover {
+    opacity: 1;
+  }
+
+  .info-box {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--background-darker, #1e1e1e);
+    border: 1px solid var(--border-color, #404040);
+    border-radius: 8px;
+    padding: 20px;
+    max-width: 500px;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+
+  .info-box h3 {
+    margin-top: 0;
+    margin-bottom: 16px;
+    color: var(--text-color, #ffffff);
+  }
+
+  .info-box ul {
+    margin: 0;
+    padding-left: 20px;
+  }
+
+  .info-box li {
+    margin-bottom: 8px;
+    color: var(--text-color, #ffffff);
+  }
+
+  .info-box-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+  }
+
+  .info-box-close:hover {
+    opacity: 1;
+  }
+
+  .explorer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px;
+  }
+
+  .explorer-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+`;
+document.head.appendChild(newStyle);
+
+// Modificar o HTML do Explorer
+const explorerHeader = document.querySelector('.explorer-header') || document.createElement('div');
+explorerHeader.className = 'explorer-header';
+explorerHeader.innerHTML = `
+  <div class="explorer-title">
+    <span>Explorer</span>
+  </div>
+  <i class="fas fa-folder toolbar-icon" id="openExplorerFolder" title="Open in File Explorer"></i>
+`;
+
+// Adicionar ícones na toolbar
+const themeToggle = document.getElementById('themeToggle');
+const toolbarIcons = document.createElement('div');
+toolbarIcons.style.display = 'flex';
+toolbarIcons.style.alignItems = 'center';
+toolbarIcons.innerHTML = `
+  <i class="fas fa-globe toolbar-icon" id="websiteLink" title="Visit Website"></i>
+  <i class="fas fa-info-circle toolbar-icon" id="showInfo" title="Keyboard Shortcuts"></i>
+`;
+themeToggle.parentNode.insertBefore(toolbarIcons, themeToggle.nextSibling);
+
+// Função para criar e mostrar o box de informações
+function showInfoBox() {
+  const infoBox = document.getElementById('infoBox');
+  infoBox.classList.add('visible');
+  infoBox.classList.remove('hidden');
+
+  // Reposition the info box in the center
+  const infoBoxHeight = infoBox.offsetHeight;
+  const viewportHeight = window.innerHeight;
+  if (infoBoxHeight > viewportHeight * 0.8) {
+    infoBox.style.top = `${viewportHeight / 2}px`;
+    infoBox.style.transform = 'translate(-50%, -50%)';
+  }
+}
+
+function closeInfoBox() {
+  const infoBox = document.getElementById('infoBox');
+  infoBox.classList.remove('visible');
+  setTimeout(() => {
+    infoBox.classList.add('hidden');
+  }, 300);
+}
+
+
+// Close the info box when clicking outside it
+document.addEventListener('click', (e) => {
+  const infoBox = document.getElementById('infoBox');
+  if (!infoBox.classList.contains('hidden') && !infoBox.contains(e.target) && e.target.id !== 'showInfo') {
+    closeInfoBox();
+  }
+});
+
+
+// Event listeners para os novos botões
+document.getElementById('openExplorerFolder').addEventListener('click', async () => {
+  const currentPath = await window.electronAPI.getCurrentFolder();
+  if (currentPath) {
+    await window.electronAPI.openInExplorer(currentPath);
+  }
+});
+
+const websiteLink = document.getElementById('websiteLink');
+if (websiteLink) {
+  websiteLink.addEventListener('click', () => {
+    window.open('https://nipscern.com', '_blank');
+  });
+}
+
+document.getElementById('showInfo').addEventListener('click', showInfoBox);
+
+const aiAssistantToggle = document.getElementById('aiAssistantToggle');
+const aiAssistant = document.getElementById('aiAssistant');
+
+
+aiAssistantToggle.addEventListener('click', () => {
+  const isOpen = aiAssistant.classList.toggle('open');
+  aiAssistantToggle.classList.toggle('active', isOpen);
+  
+  // Ajusta a largura da seção de IA e do editor
+  aiAssistant.style.width = isOpen ? '30%' : '0';
+  editorContainer.style.width = isOpen ? '70%' : '100%';
+  terminalContainer.style.width = isOpen ? '70%' : '100%';
+});

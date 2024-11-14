@@ -6,9 +6,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveFile: (data) => ipcRenderer.invoke('save-file', data),
   getLastFolder: () => store.get('lastFolder'),
   setLastFolder: (path) => store.set('lastFolder', path),
-  openFolder: () => ipcRenderer.invoke('open-folder'),
   refreshFolder: () => ipcRenderer.invoke('refreshFolder'),
-  compile: (options) => ipcRenderer.invoke('compile', options)
-
+  compile: (options) => ipcRenderer.invoke('compile', options),
+  openExternal: (url) => ipcRenderer.invoke('open-external', url) // Calls ipcMain in main.js
 });
-

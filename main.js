@@ -14,7 +14,7 @@ function createWindow() {
     const win = new BrowserWindow({
       width: 1200,
       height: 800,
-      icon: path.join(__dirname, 'assets/favicon-32x32.png'),
+      icon: path.join(__dirname, 'assets/aurora-final.png'),
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
@@ -171,4 +171,30 @@ ipcMain.handle('compile', async (event, { compiler, content, filePath, workingDi
       console.error(data);
     });
   });
+});
+
+// Add these IPC handlers
+ipcMain.handle('get-current-folder', async () => {
+  // Return the current working directory or stored folder path
+  return process.cwd(); // or wherever you store the current folder path
+});
+
+ipcMain.handle('open-in-explorer', async (event, folderPath) => {
+  try {
+    await shell.openPath(folderPath);
+    return true;
+  } catch (error) {
+    console.error('Error opening explorer:', error);
+    return false;
+  }
+});
+
+ipcMain.handle('open-external', async (event, url) => {
+  try {
+    await shell.openExternal(url);
+    return true;
+  } catch (error) {
+    console.error('Erro ao abrir o link externo:', error);
+    return false;
+  }
 });

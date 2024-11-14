@@ -10,6 +10,9 @@
   <link rel="stylesheet" href="node_modules/@fortawesome/fontawesome-free/css/all.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/file-icon-vectors@1.0.0/dist/file-icon-vectors.min.css" />
   <link rel="stylesheet" href="node_modules/xterm/css/xterm.css">
+  <link rel="stylesheet" href="info.css">
+  <link rel="stylesheet" href="ia.css">
+
 </head>
 <body class="theme-dark">
   <div class="toolbar">
@@ -33,9 +36,17 @@
       <button id="themeToggle" class="toolbar-button">
         <i class="fas fa-sun"></i>
       </button>
+      <!-- Add these to your toolbar section -->
+      <i  id="websiteLink" title="Visit Website"></i>
+      <i  id="showInfo" title="Keyboard Shortcuts"></i>
+      <i  id="openExplorerFolder" title="Open in File Explorer"></i>
+      <i id="aiAssistantToggle" class="fas fa-robot" title="Open AI Assistant"></i>
     </div>
   </div>
-
+  <div id="aiAssistant" class="ai-assistant hidden">
+    <iframe src="https://nipscern.com" frameborder="0"></iframe>
+  </div>
+  
   <div class="main-container">
     <!-- File Tree Section -->
     <div class="file-tree-container">
@@ -60,6 +71,47 @@
       </div>
     </div>
   </div>
+
+<!-- Info Box Structure -->
+<div id="infoBox" class="info-box hidden">
+  <div class="info-box-header">
+    <h3>Keyboard Shortcuts</h3>
+    <i class="fas fa-times info-box-close" onclick="closeInfoBox()"></i>
+  </div>
+  <div class="info-box-content">
+    <section>
+      <h4><i class="fas fa-file"></i> File Operations</h4>
+      <ul>
+        <li><strong>Ctrl + N</strong> - New File</li>
+        <li><strong>Ctrl + O</strong> - Open File</li>
+        <li><strong>Ctrl + S</strong> - Save File</li>
+        <li><strong>Ctrl + Shift + S</strong> - Save As</li>
+        <li><strong>Ctrl + W</strong> - Close Tab</li>
+      </ul>
+    </section>
+    <hr />
+    <section>
+      <h4><i class="fas fa-edit"></i> Editing</h4>
+      <ul>
+        <li><strong>Ctrl + Z</strong> - Undo</li>
+        <li><strong>Ctrl + Y</strong> - Redo</li>
+        <li><strong>Ctrl + C</strong> - Copy</li>
+        <li><strong>Ctrl + V</strong> - Paste</li>
+        <li><strong>Ctrl + X</strong> - Cut</li>
+      </ul>
+    </section>
+    <hr />
+    <section>
+      <h4><i class="fas fa-terminal"></i> Terminal</h4>
+      <ul>
+        <li><strong>Ctrl + K</strong> - Clear Terminal</li>
+        <li><strong>Ctrl + T</strong> - New Terminal Tab</li>
+        <li><strong>Ctrl + Scroll</strong> - Zoom In/Out</li>
+      </ul>
+    </section>
+  </div>
+</div>
+
 
   <div class="status-bar">
     <div class="status-item">Ready</div>
