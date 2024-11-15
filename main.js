@@ -198,3 +198,56 @@ ipcMain.handle('open-external', async (event, url) => {
     return false;
   }
 });
+
+// IPC Handler for directory selection
+ipcMain.handle('select-directory', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openDirectory', 'createDirectory']
+  });
+  
+  if (!result.canceled) {
+    return result.filePaths[0];
+  }
+  return null;
+});
+
+// IPC Handler for project creation
+ipcMain.handle('create-processor-project', async (event, formData) => {
+  const projectPath = path.join(formData.projectLocation, formData.projectName);
+  
+  // Create main project directory
+  await fs.mkdir(projectPath, { recursive: true });
+  
+  // Create common subdirectories
+  const directories = [
+    'src',
+    'build',
+    'docs',
+    'test'
+  ];
+  
+  for (const dir of directories) {
+    await fs.mkdir(path.join(projectPath, dir), { recursive: true });
+  }
+  
+  // Create initial configuration file
+  const config = {
+    processorName: formData.processorName,
+    pointType: formData.pointType,
+    nBits: parseInt(formData.nBits),
+    nbMantissa: formData.nbMantissa ? parseInt(formData.nbMantissa) : null,
+    nbExponent: formData.nbExponent ? parseInt(formData.nbExponent) : null,
+    dataStackSize: parseInt(formData.dataStackSize),
+    instructionStackSize: parseInt(formData.instructionStackSize),
+    inputPorts: parseInt(formData.inputPorts),
+    outputPorts: parseInt(formData.outputPorts),
+    gain: parseFloat(formData.gain)
+  };
+  
+  await fs.writeFile(
+    path.join(projectPath, 'processor-config.json'),
+    JSON.stringify(config, null, 2)
+  );
+  
+  return projectPath;
+});

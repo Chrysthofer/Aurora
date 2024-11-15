@@ -8,5 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setLastFolder: (path) => store.set('lastFolder', path),
   refreshFolder: () => ipcRenderer.invoke('refreshFolder'),
   compile: (options) => ipcRenderer.invoke('compile', options),
-  openExternal: (url) => ipcRenderer.invoke('open-external', url) // Calls ipcMain in main.js
+  openExternal: (url) => ipcRenderer.invoke('open-external', url), // Calls ipcMain in main.js
+  selectDirectory: () => ipcRenderer.invoke('select-directory'),
+  createProcessorProject: (formData) => ipcRenderer.invoke('create-processor-project', formData)
 });

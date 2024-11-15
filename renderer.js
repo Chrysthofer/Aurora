@@ -1146,3 +1146,278 @@ aiAssistantToggle.addEventListener('click', () => {
   editorContainer.style.width = isOpen ? '70%' : '100%';
   terminalContainer.style.width = isOpen ? '70%' : '100%';
 });
+
+
+// Add the button to the toolbar (add this where other toolbar buttons are defined)
+const processorHubButton = document.createElement('button');
+processorHubButton.className = 'toolbar-button';
+processorHubButton.innerHTML = '<i class="fas fa-microchip"></i> Processor Hub';
+processorHubButton.title = 'Create New Processor Project';
+document.querySelector('.toolbar').appendChild(processorHubButton);
+
+// Add styles
+const processorHubStyles = document.createElement('style');
+processorHubStyles.textContent = `
+  .processor-hub-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--background-darker, #1e1e1e);
+    border: 1px solid var(--border-color, #404040);
+    border-radius: 12px;
+    padding: 24px;
+    width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    z-index: 1001;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+
+  .processor-hub-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+  }
+
+  .processor-hub-modal h2 {
+    margin: 0 0 20px 0;
+    color: var(--text-color, #ffffff);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .processor-hub-form {
+    display: grid;
+    gap: 16px;
+  }
+
+  .form-group {
+    display: grid;
+    gap: 8px;
+  }
+
+  .form-group label {
+    color: var(--text-color, #ffffff);
+    font-size: 14px;
+  }
+
+  .form-group input,
+  .form-group select {
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color, #404040);
+    background: var(--background-darker, #2d2d2d);
+    color: var(--text-color, #ffffff);
+    font-size: 14px;
+  }
+
+  .form-group input:focus,
+  .form-group select:focus {
+    outline: none;
+    border-color: var(--accent-color, #007acc);
+  }
+
+  .button-group {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  .processor-hub-modal button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .cancel-button {
+    background: var(--background-darker, #2d2d2d);
+    color: var(--text-color, #ffffff);
+  }
+
+  .generate-button {
+    background: var(--accent-color, #007acc);
+    color: white;
+  }
+
+  .generate-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .generate-button:not(:disabled):hover {
+    background: var(--accent-color-hover, #0098ff);
+  }
+
+  .cancel-button:hover {
+    background: var(--background-lighter, #3d3d3d);
+  }
+`;
+document.head.appendChild(processorHubStyles);
+
+// Add the modal HTML function
+function createProcessorHubModal() {
+  const modal = document.createElement('div');
+  modal.innerHTML = `
+    <div class="processor-hub-overlay"></div>
+    <div class="processor-hub-modal">
+      <h2><i class="fas fa-microchip"></i> Create Processor Project</h2>
+      <form class="processor-hub-form" id="processorHubForm">
+        <div class="form-group">
+          <label for="projectName">Project Name</label>
+          <input type="text" id="projectName" required>
+        </div>
+        <div class="form-group">
+          <label for="projectLocation">Project Location</label>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="projectLocation" required readonly>
+            <button type="button" id="browseLocation" style="white-space: nowrap;">
+              <i class="fas fa-folder-open"></i> Browse
+            </button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="processorName">Processor Name</label>
+          <input type="text" id="processorName" required>
+        </div>
+        <div class="form-group">
+          <label for="pointType">Point Type</label>
+          <select id="pointType" required>
+            <option value="fixed">Fixed Point</option>
+            <option value="floating">Floating Point</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="nBits">N Bits</label>
+          <input type="number" id="nBits" required min="1">
+        </div>
+        <div class="form-group floating-point-options" style="display: none;">
+          <label for="nbMantissa">Nb Mantissa</label>
+          <input type="number" id="nbMantissa" min="1">
+        </div>
+        <div class="form-group floating-point-options" style="display: none;">
+          <label for="nbExponent">Nb Exponent</label>
+          <input type="number" id="nbExponent" min="1">
+        </div>
+        <div class="form-group">
+          <label for="dataStackSize">Data Stack Size</label>
+          <input type="number" id="dataStackSize" required min="1">
+        </div>
+        <div class="form-group">
+          <label for="instructionStackSize">Instruction Stack Size</label>
+          <input type="number" id="instructionStackSize" required min="1">
+        </div>
+        <div class="form-group">
+          <label for="inputPorts">Number of Input Ports</label>
+          <input type="number" id="inputPorts" required min="0">
+        </div>
+        <div class="form-group">
+          <label for="outputPorts">Number of Output Ports</label>
+          <input type="number" id="outputPorts" required min="0">
+        </div>
+        <div class="form-group">
+          <label for="gain">Gain</label>
+          <input type="number" id="gain" required step="any">
+        </div>
+        <div class="button-group">
+          <button type="button" class="cancel-button" id="cancelProcessorHub">Cancel</button>
+          <button type="submit" class="generate-button" id="generateProcessor" disabled>
+            <i class="fas fa-cog"></i> Generate
+          </button>
+        </div>
+      </form>
+    </div>
+  `;
+  return modal;
+}
+
+// Add the event handlers
+processorHubButton.addEventListener('click', () => {
+  const modal = createProcessorHubModal();
+  document.body.appendChild(modal);
+
+  const form = document.getElementById('processorHubForm');
+  const generateButton = document.getElementById('generateProcessor');
+  const pointTypeSelect = document.getElementById('pointType');
+  const floatingPointOptions = document.querySelectorAll('.floating-point-options');
+  
+  // Handle point type change
+  pointTypeSelect.addEventListener('change', () => {
+    const isFloating = pointTypeSelect.value === 'floating';
+    floatingPointOptions.forEach(option => {
+      option.style.display = isFloating ? 'grid' : 'none';
+      option.querySelector('input').required = isFloating;
+    });
+  });
+
+  // Handle browse button
+  document.getElementById('browseLocation').addEventListener('click', async () => {
+    const result = await window.electronAPI.selectDirectory();
+    if (result) {
+      document.getElementById('projectLocation').value = result;
+    }
+  });
+
+  // Handle form validation
+  form.addEventListener('input', () => {
+    const isValid = form.checkValidity();
+    generateButton.disabled = !isValid;
+  });
+
+  // Handle generate button
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const formData = {
+      projectName: document.getElementById('projectName').value,
+      projectLocation: document.getElementById('projectLocation').value,
+      processorName: document.getElementById('processorName').value,
+      pointType: document.getElementById('pointType').value,
+      nBits: document.getElementById('nBits').value,
+      nbMantissa: document.getElementById('nbMantissa').value,
+      nbExponent: document.getElementById('nbExponent').value,
+      dataStackSize: document.getElementById('dataStackSize').value,
+      instructionStackSize: document.getElementById('instructionStackSize').value,
+      inputPorts: document.getElementById('inputPorts').value,
+      outputPorts: document.getElementById('outputPorts').value,
+      gain: document.getElementById('gain').value
+    };
+
+    try {
+      // Create project structure
+      await window.electronAPI.createProcessorProject(formData);
+      
+      // Close modal
+      modal.remove();
+      
+      // Refresh file tree
+      await refreshFileTree();
+      
+      // Show success message
+      writeToTerminal('Processor project created successfully!', 'success');
+    } catch (error) {
+      console.error('Error creating processor project:', error);
+      writeToTerminal(`Error creating processor project: ${error.message}`, 'error');
+    }
+  });
+
+  // Handle cancel button
+  document.getElementById('cancelProcessorHub').addEventListener('click', () => {
+    modal.remove();
+  });
+
+  // Handle click outside modal
+  modal.querySelector('.processor-hub-overlay').addEventListener('click', () => {
+    modal.remove();
+  });
+});

@@ -9,9 +9,19 @@
     "main": "main.js",
     "scripts": {
         "start": "electron .",
-        "package": "electron-builder build"
+        "package": "electron-builder build",
+         "build": "webpack --config webpack.config.js",
+    "dev": "webpack --config webpack.config.js --watch"
     },
     "dependencies": {
+
+        "@radix-ui/react-alert-dialog": "^1.0.5",
+        "@radix-ui/react-slot": "^1.0.2",
+        "class-variance-authority": "^0.7.0",
+        "clsx": "^2.0.0",
+        "tailwindcss": "^3.3.0",
+        "tailwindcss-animate": "^1.0.7",
+
         "@fortawesome/fontawesome-free": "^6.6.0",
         "@radix-ui/react-tabs": "^1.1.1",
         "electron-store": "^10.0.0",
