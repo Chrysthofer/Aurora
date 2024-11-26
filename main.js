@@ -14,8 +14,9 @@ function createWindow() {
     const win = new BrowserWindow({
       width: 1200,
       height: 800,
-      icon: path.join(__dirname, 'assets/aurora-final.png'),
+      icon: path.join(__dirname, 'assets/icons/aurora_borealis-2.ico'),
       webPreferences: {
+        webviewTag: true,
         nodeIntegration: false,
         contextIsolation: true,
         preload: path.join(__dirname, 'preload.js')
@@ -57,8 +58,15 @@ ipcMain.handle('read-file', async (event, filePath) => {
 });
 
 ipcMain.handle('save-file', async (event, { filePath, content }) => {
-  return fs.promises.writeFile(filePath, content, 'utf8');
+  try {
+      await fs.promises.writeFile(filePath, content, 'utf8');
+      return true;
+  } catch (error) {
+      console.error('Error saving file:', error);
+      return false;
+  }
 });
+
 
 async function listFiles(dir) {
   const files = await fs.promises.readdir(dir, { withFileTypes: true });
@@ -250,4 +258,109 @@ ipcMain.handle('create-processor-project', async (event, formData) => {
   );
   
   return projectPath;
+});
+
+
+// IPC Handler for compilation
+ipcMain.handle('compile-code', async (event, { compiler, filePath, workingDir }) => {
+  return new Promise((resolve, reject) => {
+    const process = spawn(compiler, [filePath], { cwd: workingDir });
+
+    let stdout = '';
+    let stderr = '';
+
+    // Send each line of output separately
+    process.stdout.on('data', (data) => {
+      const lines = data.toString().split('\n');
+      lines.forEach(line => {
+        if (line.trim()) {
+          event.sender.send('compiler-stdout', line.trim());
+        }
+      });
+      stdout += data.toString();
+    });
+
+    process.stderr.on('data', (data) => {
+      const lines = data.toString().split('\n');
+      lines.forEach(line => {
+        if (line.trim()) {
+          event.sender.send('compiler-stderr', line.trim());
+        }
+      });
+      stderr += data.toString();
+    });
+
+    // Rest of the code remains the same
+  });
+});
+
+
+
+// Manipulador para abrir o explorador de arquivos
+ipcMain.handle('dialog:openDirectory', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openDirectory', 'createDirectory'],
+  });
+
+  if (result.canceled) {
+    return null; // Se o usuário cancelar
+  }
+  return result.filePaths[0]; // Caminho da pasta selecionada
+});
+
+ipcMain.handle('project:createStructure', async (_, projectPath, spfPath) => {
+  try {
+    // Cria as pastas do projeto
+    const hardwarePath = path.join(projectPath, 'Hardware');
+    const softwarePath = path.join(projectPath, 'Software');
+    const procIPPath = path.join(hardwarePath, 'Proc_IP');
+    const quartusFilesPath = path.join(hardwarePath, 'Quartus_Files');
+
+    fs.mkdirSync(procIPPath, { recursive: true });
+    fs.mkdirSync(quartusFilesPath, { recursive: true });
+    fs.mkdirSync(softwarePath, { recursive: true });
+
+    // Cria o arquivo .spf
+    const spfContent = `
+      Project Name: ${path.basename(projectPath)}
+      Structure:
+        - Hardware/
+          - Proc_IP/
+          - Quartus_Files/
+        - Software/
+    `;
+    fs.writeFileSync(spfPath, spfContent.trim(), 'utf-8');
+
+    return true; // Retorna sucesso
+  } catch (error) {
+    console.error('Error creating project structure:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('getFolderFiles', async (event, folderPath) => {
+  try {
+    const files = await fs.promises.readdir(folderPath, { withFileTypes: true });
+    const fileStructure = files.map(file => {
+      const filePath = path.join(folderPath, file.name);
+      if (file.isDirectory()) {
+        return {
+          name: file.name,
+          path: filePath,
+          type: 'directory',
+          children: [] // Deixe vazio por enquanto, será preenchido depois se necessário
+        };
+      } else {
+        return {
+          name: file.name,
+          path: filePath,
+          type: 'file'
+        };
+      }
+    });
+    return { files: fileStructure };
+  } catch (error) {
+    console.error('Error reading folder:', error);
+    throw new Error('Failed to read folder');
+  }
 });

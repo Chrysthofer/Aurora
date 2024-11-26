@@ -1,0 +1,111 @@
+:root {
+    --sidebar-bg: #1e1e1e;
+    --sidebar-header-bg: #252526;
+    --sidebar-hover-bg: #2d2d2d;
+    --sidebar-text: #ffffff;
+    --sidebar-icon: #7a7a7a;
+    --sidebar-icon-hover: #ffffff;
+    --sidebar-shadow: rgba(0, 0, 0, 0.5);
+    --font-family: 'Inter', sans-serif;
+  }
+  
+
+  /* Hamburger Menu
+  #hamburgerMenu {
+    position: fixed;
+    top: 15px;
+    left: 15px;
+    z-index: 1000;
+    cursor: pointer;
+    font-size: 26px;
+    color: var(--sidebar-icon);
+    background-color: transparent;
+    border: none;
+  }
+  
+  #hamburgerMenu:hover {
+    color: var(--sidebar-icon-hover);
+  } */
+  
+  /* Sidebar */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -390px;
+    width: 380px;
+    height: 100%;
+    background-color: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    transition: left 0.3s ease-in-out;
+    box-shadow: 3px 0 10px var(--sidebar-shadow);
+    z-index: 999;
+    overflow-y: auto;
+  }
+  
+  .sidebar.open {
+    left: 0;
+  }
+  
+  .sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    background-color: var(--sidebar-header-bg);
+    font-size: 20px;
+    color: var(--sidebar-text);
+  }
+  
+  .sidebar-header i {
+    cursor: pointer;
+    font-size: 22px;
+    color: var(--sidebar-icon);
+  }
+  
+  .sidebar-header i:hover {
+    color: var(--sidebar-icon-hover);
+  }
+  
+  /* Sidebar Menu */
+  .sidebar-menu {
+    padding: 0;
+    margin: 0;
+  }
+  
+  .sidebar-menu li {
+    display: flex;
+    align-items: center;
+    padding: 15px 20px;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .sidebar-menu li:last-child {
+    border-bottom: none;
+  }
+  
+  .sidebar-menu li:hover {
+    background-color: var(--sidebar-hover-bg);
+    color: var(--sidebar-icon-hover);
+  }
+  
+  .sidebar-menu li i {
+    /* font-size: 22px; */
+    margin-right: 15px;
+    color: var(--sidebar-icon);
+    transition: color 0.2s;
+  }
+  
+  .sidebar-menu li:hover i {
+    color: var(--sidebar-icon-hover);
+  }
+  
+  .sidebar-menu li span {
+    font-size: 16px;
+    /* font-weight: 500; */
+    color: var(--sidebar-text);
+    flex: 1;
+    transition: color 0.2s;
+  }
+  

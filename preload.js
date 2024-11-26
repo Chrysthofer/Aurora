@@ -10,5 +10,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   compile: (options) => ipcRenderer.invoke('compile', options),
   openExternal: (url) => ipcRenderer.invoke('open-external', url), // Calls ipcMain in main.js
   selectDirectory: () => ipcRenderer.invoke('select-directory'),
-  createProcessorProject: (formData) => ipcRenderer.invoke('create-processor-project', formData)
+  createProcessorProject: (formData) => ipcRenderer.invoke('create-processor-project', formData),
+  selectDirectory: async () => {
+    return await ipcRenderer.invoke('dialog:openDirectory');
+  },
+  createProjectStructure: async (projectPath, spfPath) => {
+    ipcRenderer.invoke('project:createStructure', projectPath, spfPath);
+  },
+  getFolderFiles: (folderPath) => ipcRenderer.invoke('getFolderFiles', folderPath),  // Expondo a função aqui
+
 });
+

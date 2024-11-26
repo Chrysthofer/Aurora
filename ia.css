@@ -26,8 +26,12 @@
     transition: border 0.3s ease;
   }
   
-  #aiAssistantToggle.active {
-    animation: rainbow-border 1.5s infinite;
+  .ai-assistant-close {
+    padding: 10px 20px;
+  }
+
+  #ai-assistant-title {
+    margin-left: 10px;
   }
   
   @keyframes rainbow-border {

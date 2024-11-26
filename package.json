@@ -1,29 +1,47 @@
 {
     "name": "aurora-ide",
     "productName": "Aurora IDE",
+    "description": "SAPHO & Aurora",
     "author": "NIPSCERN",
     "version": "1.0.0",
     "win": {
-        "icon": "assets/icons/favicon.ico"
+        "icon": "assets/icons/aurora_borealis-2.ico"
     },
     "main": "main.js",
     "scripts": {
         "start": "electron .",
-        "package": "electron-builder build",
-         "build": "webpack --config webpack.config.js",
-    "dev": "webpack --config webpack.config.js --watch"
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "build": "electron-builder"
     },
+    "build": {
+    "appId": "com.nipscern.auroraide",
+    "productName": "Aurora IDE",
+    "publish": [
+            {
+                "provider": "github",
+                "owner": "Chrysthofer",
+                "repo": "Aurora"
+            }
+        ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icons/aurora_borealis-2.ico",
+      "artifactName": "${productName}-Setup-${1.0.0}.${ext}"
+    },
+    "directories": {
+      "buildResources": "build"
+    }
+  },
+  "keywords": [
+    "Aurora"
+  ],
     "dependencies": {
-
+        "@fortawesome/fontawesome-free": "^6.6.0",
         "@radix-ui/react-alert-dialog": "^1.0.5",
         "@radix-ui/react-slot": "^1.0.2",
+        "@radix-ui/react-tabs": "^1.1.1",
         "class-variance-authority": "^0.7.0",
         "clsx": "^2.0.0",
-        "tailwindcss": "^3.3.0",
-        "tailwindcss-animate": "^1.0.7",
-
-        "@fortawesome/fontawesome-free": "^6.6.0",
-        "@radix-ui/react-tabs": "^1.1.1",
         "electron-store": "^10.0.0",
         "electron-updater": "^6.3.9",
         "lucide": "^0.293.0",
@@ -33,6 +51,8 @@
         "react-dom": "^18.3.1",
         "sortablejs": "^1.15.3",
         "tabulator-tables": "^6.3.0",
+        "tailwindcss": "^3.3.0",
+        "tailwindcss-animate": "^1.0.7",
         "xterm": "^5.3.0"
     },
     "devDependencies": {
@@ -40,15 +60,5 @@
         "electron-builder": "^25.1.8",
         "webpack": "^5.95.0",
         "webpack-cli": "^5.1.4"
-    },
-    "build": {
-        "appId": "com.nipscern.aurora.id",
-        "publish": [
-            {
-                "provider": "github",
-                "owner": "Chrysthofer",
-                "repo": "Aurora"
-            }
-        ]
     }
 }

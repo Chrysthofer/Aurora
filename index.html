@@ -12,11 +12,17 @@
   <link rel="stylesheet" href="node_modules/xterm/css/xterm.css">
   <link rel="stylesheet" href="info.css">
   <link rel="stylesheet" href="ia.css">
+  <link rel="stylesheet" href="hamburguer.css">
+  <link rel="stylesheet" href="modal.css">
 
 </head>
 <body class="theme-dark">
   <div class="toolbar">
     <div class="toolbar-left">
+      <button id="hamburgerMenu" class="toolbar-button" onclick="toggleSidebar()">
+        <i class="fa-solid fa-compass" ></i>
+        <span>Menu</span>
+      </button>
       <button id="openFolderBtn" class="toolbar-button">
         <i class="fas fa-folder"></i>
         <span>Open Folder</span>
@@ -26,10 +32,10 @@
         <span>Save</span>
       </button>
       <button id="cmmcomp" class="toolbar-button" title="Compile CMM">
-        <i class="fas fa-code"></i>
+        <i class="fa-solid fa-c"></i><i class="fa-solid fa-plus-minus"></i>
       </button>
       <button id="asmcomp" class="toolbar-button" title="Compile ASM">
-        <i class="fas fa-microchip"></i>
+        <i class="fa-solid fa-cube"></i>
       </button>
     </div>
     <div class="toolbar-right">
@@ -40,13 +46,63 @@
       <i  id="websiteLink" title="Visit Website"></i>
       <i  id="showInfo" title="Keyboard Shortcuts"></i>
       <i  id="openExplorerFolder" title="Open in File Explorer"></i>
-      <i id="aiAssistantToggle" class="fas fa-robot" title="Open AI Assistant"></i>
+
     </div>
   </div>
-  <div id="aiAssistant" class="ai-assistant hidden">
-    <iframe frameborder="0" src="https://gemini.google.com/" allow="camera; clipboard-write; fullscreen; microphone; geolocation"></iframe>
+
+  <!-- Sidebar -->
+  <div id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+      <h3><img src="./assets/icons/aurora_borealis-2.svg" alt="Aurora IDE"><br>Powered by AURA IDE</h3>
+      <i class="fas fa-times" onclick="toggleSidebar()"></i>
+    </div>
+    <ul class="sidebar-menu">
+      <li title="Settings">
+        <i class="fas fa-cogs"></i>
+        <span>Configurações</span>
+      </li>
+      <li title="Translation">
+        <i class="fas fa-language"></i>
+        <span>Tradução</span>
+      </li>
+      <li title="Abstract Syntax Tree">
+        <i class="fas fa-sitemap"></i>
+        <span>AST</span>
+      </li>
+      <li id="newProjectBtn" title="New Project">
+        <i class="fas fa-folder-plus"></i>
+        <span>New Project</span>
+      </li>      
+      <li title="Backup">
+        <i class="fas fa-cloud-upload-alt"></i>
+        <span>Backup</span>
+      </li>
+      <li title="Visit Website">
+        <i class="fas fa-globe"></i>
+        <span>Website</span>
+      </li>
+    </ul>
   </div>
-  
+  <!-- Modal Overlay -->
+  <div id="newProjectModal" class="modal hidden">
+    <div class="modal-content">
+      <h2><i class="fa-solid fa-diagram-project"></i> Create New Project</h2>
+      <div class="input-group">
+        <label for="projectNameInput">Project Name:</label>
+        <input type="text" id="projectNameInput" placeholder="Enter project name" />
+      </div>
+      <div class="input-group">
+        <label for="projectLocationInput">Project Location:</label>
+        <input type="text" id="projectLocationInput" placeholder="Select project location" readonly />
+        <button id="browseBtn" class="btn-browse"><i class="fas fa-folder-open"></i> Browse</button>
+      </div>
+      <div class="modal-actions">
+        <button id="generateProjectBtn" class="btn-generate"><i class="fa-solid fa-plus"></i> Generate</button>
+        <button id="cancelProjectBtn" class="btn-cancel"><i class="fa-solid fa-xmark"></i> Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <div class="main-container">
     <!-- File Tree Section -->
     <div class="file-tree-container">
@@ -67,6 +123,7 @@
       <div class="resizer-horizontal"></div>
       <div id="terminal-container" class="terminal-container">
         <div class="terminal-header">Terminal</div>
+         <p> Space </p>
         <div id="terminal" class="terminal-content"></div>
       </div>
     </div>
@@ -125,5 +182,7 @@
   </script>
   <script src="node_modules/xterm/lib/xterm.js"></script>
   <script src="renderer.js"></script>
+  <script src="hamburguer.js"></script>
+  <script src="modal.js"></script>
 </body>
 </html>

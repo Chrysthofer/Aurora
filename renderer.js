@@ -4,17 +4,24 @@ let activeFile = null;
 let compiling = false;
 let terminal = null;
 
+let aiAssistantVisible = false;
+let aiAssistantContainer = null;
+let currentProvider = 'chatgpt'; // or 'claude'
+
 
 // Tab Manager with improved animations and layout
 const TabManager = {
   init() {
     this.tabsContainer = document.getElementById('tabs');
     this.initStyles();
-    this.initSortable();
-    this.initKeyboardShortcuts();
+    this.initDragAndDrop();
     this.setupEditorChangeTracking();
+    this.setupContextMenu();
     this.setupKeyboardShortcuts();
-    this.setupResizeObserver(); // Call to setup observer for resizing
+    this.initResizeObserver();
+    
+    // Track modified files
+    this.modifiedFiles = new Set();
   },
 
   initStyles() {
@@ -22,89 +29,151 @@ const TabManager = {
     style.textContent = `
       #tabs {
         display: flex;
-        gap: 4px;
-        padding: 4px;
-        background: var(--background-darker, #1e1e1e);
-        min-height: 36px;
+        background: var(--background-darker);
+        height: 35px;
         overflow-x: auto;
+        overflow-y: hidden;
+        white-space: nowrap;
+        user-select: none;
+        border-bottom: 1px solid var(--border-color);
       }
 
       .tab {
-        display: flex;
+        display: inline-flex;
         align-items: center;
-        padding: 0 8px;
-        background: var(--tab-background, #2d2d2d);
-        border-radius: 4px;
-        cursor: pointer;
-        user-select: none;
+        height: 35px;
+        padding: 0 10px;
+        background: var(--background);
+        border-right: 1px solid var(--border-color);
+        min-width: 100px;
         max-width: 200px;
-        height: 32px;
+        position: relative;
+        cursor: pointer;
+        transition: background 0.1s ease;
       }
 
       .tab.active {
-        background: var(--tab-active-background, #3d3d3d);
+        background: var(--background-lighter);
+        border-top: 2px solid var(--accent-color);
       }
 
-      .tab-title {
-        margin-right: 8px;
-        white-space: nowrap;
+      .tab:hover {
+        background: var(--background-lighter);
+      }
+
+      .tab-content {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        width: 100%;
         overflow: hidden;
-        text-overflow: ellipsis;
       }
 
-      .tab-close {
-        opacity: 0.7;
-        cursor: pointer;
-        border: none;
-        background: none;
-        color: inherit;
-        padding: 4px;
+      .tab-icon {
+        flex-shrink: 0;
+        width: 16px;
+        height: 16px;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 4px;
+        opacity: 0.7;
+      }
+
+      .tab-title {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 13px;
+      }
+
+      .tab-close {
+        opacity: 0;
+        margin-left: auto;
+        padding: 4px;
+        border-radius: 3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 0.1s ease;
+      }
+
+      .tab:hover .tab-close,
+      .tab.active .tab-close {
+        opacity: 0.7;
       }
 
       .tab-close:hover {
-        opacity: 1;
         background: rgba(255, 255, 255, 0.1);
+        opacity: 1;
       }
 
       .tab.modified .tab-title::after {
         content: '•';
-        color: var(--accent-color, #007acc);
         margin-left: 4px;
+        color: var(--accent-color);
       }
 
-      .tab.sortable-ghost {
+      .tab.preview {
+        font-style: italic;
+      }
+
+      .tab.dragging {
         opacity: 0.5;
-        background: var(--accent-color, #007acc);
-      }
-
-      .tab.sortable-drag {
-        opacity: 0.9;
-      }
-
-      .context-menu {
-        position: absolute;
-        background: white;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-        z-index: 1000;
-      }
-
-      .context-menu-item {
-        padding: 8px;
-        cursor: pointer;
-        transition: background 0.2s;
-      }
-
-      .context-menu-item:hover {
-        background: #f0f0f0;
       }
     `;
     document.head.appendChild(style);
+  },
+
+  initDragAndDrop() {
+    let draggedTab = null;
+    let dropIndicator = document.createElement('div');
+    dropIndicator.className = 'drop-indicator';
+
+    this.tabsContainer.addEventListener('dragstart', (e) => {
+      draggedTab = e.target.closest('.tab');
+      draggedTab.classList.add('dragging');
+      e.dataTransfer.setData('text/plain', ''); // Required for Firefox
+    });
+
+    this.tabsContainer.addEventListener('dragend', () => {
+      draggedTab.classList.remove('dragging');
+      draggedTab = null;
+      dropIndicator.remove();
+    });
+
+    this.tabsContainer.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      const target = e.target.closest('.tab');
+      if (!target || target === draggedTab) return;
+
+      const rect = target.getBoundingClientRect();
+      const dropPosition = e.clientX < rect.left + rect.width / 2 ? 'before' : 'after';
+      
+      dropIndicator.style.left = dropPosition === 'before' ? 
+        `${rect.left}px` : `${rect.right}px`;
+      
+      if (!dropIndicator.parentNode) {
+        this.tabsContainer.appendChild(dropIndicator);
+      }
+    });
+
+    this.tabsContainer.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const target = e.target.closest('.tab');
+      if (!target || target === draggedTab) return;
+
+      const rect = target.getBoundingClientRect();
+      const dropPosition = e.clientX < rect.left + rect.width / 2 ? 'before' : 'after';
+      
+      if (dropPosition === 'before') {
+        this.tabsContainer.insertBefore(draggedTab, target);
+      } else {
+        this.tabsContainer.insertBefore(draggedTab, target.nextSibling);
+      }
+
+      this.saveTabOrder();
+    });
   },
 
   setupKeyboardShortcuts() {
@@ -117,10 +186,37 @@ const TabManager = {
           }
         } else if (e.key === 's') {
           e.preventDefault();
-          await this.saveCurrentTab();
+          if (e.shiftKey) {
+            await this.saveAllTabs();
+          } else {
+            await this.saveTab(activeFile);
+          }
+        } else if (e.key === 't' && e.shiftKey) {
+          e.preventDefault();
+          await this.reopenLastClosedTab();
         }
       }
     });
+  },
+
+  saveTabOrder() {
+    const tabOrder = Array.from(this.tabsContainer.children)
+      .map(tab => tab.dataset.path);
+    localStorage.setItem('tabOrder', JSON.stringify(tabOrder));
+  },
+
+  loadTabOrder() {
+    try {
+      const savedOrder = JSON.parse(localStorage.getItem('tabOrder')) || [];
+      savedOrder.forEach(path => {
+        const tab = this.tabsContainer.querySelector(`[data-path="${path}"]`);
+        if (tab) {
+          this.tabsContainer.appendChild(tab);
+        }
+      });
+    } catch (error) {
+      console.error('Error loading tab order:', error);
+    }
   },
 
   initSortable() {
@@ -193,61 +289,91 @@ const TabManager = {
     });
   },
 
-  createTab(filePath) {
+  createTab(filePath, isPreview = false) {
     const tab = document.createElement('div');
-    tab.className = 'tab';
+    tab.className = `tab${isPreview ? ' preview' : ''}`;
     tab.dataset.path = filePath;
+    tab.draggable = true;
+
+    const content = document.createElement('div');
+    content.className = 'tab-content';
 
     const title = document.createElement('span');
     title.className = 'tab-title';
     title.textContent = filePath.split('/').pop();
     title.title = filePath;
 
-    const closeButton = document.createElement('button');
+    const closeButton = document.createElement('div');
     closeButton.className = 'tab-close';
-    closeButton.innerHTML = '×';
+    closeButton.innerHTML = '×'; // Close button content
     closeButton.title = 'Close';
 
-    tab.appendChild(title);
-    tab.appendChild(closeButton);
-
-    // Event listeners
-    tab.addEventListener('click', (e) => {
-      if (e.target !== closeButton) {
-        this.activateTab(filePath);
-      }
+    // Bind event listener to close button
+    closeButton.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent triggering tab activation
+        this.closeTab(filePath); // Call closeTab with the file path
     });
 
-    closeButton.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      await this.closeTab(filePath);
+    content.appendChild(title);
+    content.appendChild(closeButton);
+    tab.appendChild(content);
+
+    tab.addEventListener('click', () => {
+        this.activateTab(filePath); // Activate tab on click
     });
 
     return tab;
+},
+
+  markTabAsModified(filePath) {
+    const tab = this.tabsContainer.querySelector(`[data-path="${filePath}"]`);
+    if (tab) {
+      tab.classList.add('modified');
+      this.modifiedFiles.add(filePath);
+      
+      // Change close button to circle
+      const closeButton = tab.querySelector('.tab-close');
+      if (closeButton) {
+        closeButton.innerHTML = '●';
+      }
+    }
   },
 
-  async addTab(filePath, content) {
+  markTabAsSaved(filePath) {
+    const tab = this.tabsContainer.querySelector(`[data-path="${filePath}"]`);
+    if (tab) {
+      tab.classList.remove('modified');
+      this.modifiedFiles.delete(filePath);
+      
+      // Change circle back to X
+      const closeButton = tab.querySelector('.tab-close');
+      if (closeButton) {
+        closeButton.innerHTML = '×';
+      }
+    }
+  },
+
+
+  async addTab(filePath, content, isPreview = false) {
     if (!this.tabsContainer) return;
 
-    // Check if tab already exists
     const existingTab = this.tabsContainer.querySelector(`[data-path="${filePath}"]`);
     if (existingTab) {
+      if (!isPreview && existingTab.classList.contains('preview')) {
+        existingTab.classList.remove('preview');
+      }
       this.activateTab(filePath);
       return;
     }
 
-    // Add to open files
     openFiles.set(filePath, content);
-
-    // Create and add new tab
-    const tab = this.createTab(filePath);
+    const tab = this.createTab(filePath, isPreview);
     this.tabsContainer.appendChild(tab);
-
-    // Activate the new tab
     this.activateTab(filePath);
-
-    // Setup change tracking for this file
-    this.setupChangeTracking(filePath);
+    
+    if (!isPreview) {
+      this.saveTabOrder();
+    }
   },
 
   activateTab(filePath) {
@@ -282,29 +408,164 @@ const TabManager = {
     const tab = this.tabsContainer.querySelector(`[data-path="${filePath}"]`);
     if (!tab) return;
 
-    // Check for unsaved changes
-    if (tab.classList.contains('modified')) {
-      const save = confirm(`Do you want to save changes to ${filePath.split('/').pop()}?`);
-      if (save) {
-        await this.saveTab(filePath);
-      }
+    // Prompt para salvar mudanças se o arquivo estiver modificado
+    if (this.modifiedFiles.has(filePath)) {
+        const fileName = filePath.split('/').pop();
+        const response = await this.showSaveDialog(fileName);
+
+        if (response === 'save') {
+            await this.saveTab(filePath);
+        } else if (response === 'cancel') {
+            return; // Sai sem fechar a aba
+        }
     }
 
-    // Remove from open files and DOM
-    openFiles.delete(filePath);
+    // Remover aba do DOM
     tab.remove();
 
-    // Handle active file changes
+    // Remover dados relacionados ao arquivo
+    openFiles.delete(filePath);
+    this.modifiedFiles.delete(filePath);
+
+    // Limpar o Monaco Editor caso seja a aba ativa
     if (activeFile === filePath) {
-      const remainingTabs = Array.from(this.tabsContainer.children);
-      if (remainingTabs.length > 0) {
-        this.activateTab(remainingTabs[remainingTabs.length - 1].dataset.path);
+        const remainingTabs = Array.from(this.tabsContainer.children);
+
+        if (remainingTabs.length > 0) {
+            // Ativar a aba seguinte
+            const nextTab = remainingTabs[remainingTabs.length - 1];
+            this.activateTab(nextTab.dataset.path);
+        } else {
+            // Nenhuma aba restante, limpar o editor
+            activeFile = null;
+            editor.setValue('');
+            editor.setModel(null); // Remove o modelo atual
+        }
+    }
+
+    // Atualizar a ordem das abas
+    this.saveTabOrder();
+},
+
+  
+  async showSaveDialog(fileName) {
+    return new Promise((resolve) => {
+      const dialog = document.createElement('div');
+      dialog.className = 'save-dialog';
+      dialog.innerHTML = `
+        <div class="save-dialog-content">
+          <p>Do you want to save the changes made to ${fileName}?</p>
+          <div class="save-dialog-buttons">
+            <button class="save">Save</button>
+            <button class="dont-save">Don't Save</button>
+            <button class="cancel">Cancel</button>
+          </div>
+        </div>
+      `;
+
+      dialog.querySelector('.save').onclick = () => {
+        dialog.remove();
+        resolve('save');
+      };
+
+      dialog.querySelector('.dont-save').onclick = () => {
+        dialog.remove();
+        resolve('dont-save');
+      };
+
+      dialog.querySelector('.cancel').onclick = () => {
+        dialog.remove();
+        resolve('cancel');
+      };
+
+      document.body.appendChild(dialog);
+    });
+  },
+
+  setupContextMenu() {
+    window.addEventListener('contextmenu', (e) => {
+      const tab = e.target.closest('.tab');
+      if (!tab) return;
+
+      e.preventDefault();
+      const filePath = tab.dataset.path;
+      
+      const menu = this.createContextMenu(filePath);
+      menu.style.left = `${e.clientX}px`;
+      menu.style.top = `${e.clientY}px`;
+      
+      document.body.appendChild(menu);
+      
+      const closeMenu = (e) => {
+        if (!menu.contains(e.target)) {
+          menu.remove();
+          document.removeEventListener('click', closeMenu);
+        }
+      };
+      
+      setTimeout(() => {
+        document.addEventListener('click', closeMenu);
+      }, 0);
+    });
+  },
+
+  createContextMenu(filePath) {
+    const menu = document.createElement('div');
+    menu.className = 'tab-context-menu';
+    
+    const items = [
+      { label: 'Close', action: () => this.closeTab(filePath) },
+      { label: 'Close Others', action: () => this.closeOtherTabs(filePath) },
+      { label: 'Close All', action: () => this.closeAllTabs() },
+      { label: 'Close Saved', action: () => this.closeSavedTabs() },
+      { label: 'Close to the Right', action: () => this.closeTabsToRight(filePath) },
+      { type: 'separator' },
+      { label: 'Copy Path', action: () => navigator.clipboard.writeText(filePath) },
+      { label: 'Copy Relative Path', action: () => this.copyRelativePath(filePath) },
+      { type: 'separator' },
+      { label: 'Reopen Closed Tab', action: () => this.reopenLastClosedTab(), enabled: this.closedTabs.length > 0 }
+    ];
+
+    items.forEach(item => {
+      if (item.type === 'separator') {
+        menu.appendChild(document.createElement('hr'));
       } else {
-        activeFile = null;
-        editor.setValue('');
+        const menuItem = document.createElement('div');
+        menuItem.className = 'tab-context-menu-item';
+        if (item.enabled === false) {
+          menuItem.classList.add('disabled');
+        }
+        menuItem.textContent = item.label;
+        menuItem.addEventListener('click', () => {
+          if (item.enabled !== false) {
+            item.action();
+          }
+          menu.remove();
+        });
+        menu.appendChild(menuItem);
       }
+    });
+
+    return menu;
+  },
+
+  closedTabs: [],
+  maxClosedTabs: 10,
+
+  trackClosedTab(filePath) {
+    this.closedTabs.unshift({ path: filePath, content: openFiles.get(filePath) });
+    if (this.closedTabs.length > this.maxClosedTabs) {
+      this.closedTabs.pop();
     }
   },
+
+  async reopenLastClosedTab() {
+    const lastTab = this.closedTabs.shift();
+    if (lastTab) {
+      await this.addTab(lastTab.path, lastTab.content);
+    }
+  },
+
   async saveTab(filePath) {
     if (!filePath || !editor) return;
 
@@ -392,20 +653,30 @@ const TabManager = {
   getFileIcon(filePath) {
     const extension = filePath.split('.').pop().toLowerCase();
     const iconMap = {
-      'js': 'fas fa-file-code',
-      'jsx': 'fas fa-react',
-      'ts': 'fas fa-file-code',
-      'tsx': 'fas fa-react',
-      'html': 'fas fa-file-code',
-      'css': 'fas fa-file-code',
-      'json': 'fas fa-file-code',
-      'md': 'fas fa-file-alt',
-      'c': 'fas fa-file-code',
-      'cpp': 'fas fa-file-code',
-      'h': 'fas fa-file-code',
-      'hpp': 'fas fa-file-code'
+      js: '<i class="fab fa-js"></i>',
+      jsx: '<i class="fab fa-react"></i>',
+      ts: '<i class="fab fa-js-square"></i>',
+      tsx: '<i class="fab fa-react"></i>',
+      html: '<i class="fab fa-html5"></i>',
+      css: '<i class="fab fa-css3"></i>',
+      json: '<i class="fas fa-brackets-curly"></i>',
+      md: '<i class="fab fa-markdown"></i>',
+      // Add more file types as needed
+      default: '<i class="fas fa-file-code"></i>'
     };
-    return iconMap[extension] || 'fas fa-file';
+    return iconMap[extension] || iconMap.default;
+  },
+
+  initResizeObserver() {
+    const resizeObserver = new ResizeObserver(() => {
+      if (activeFile) {
+        const activeTab = this.tabsContainer.querySelector(`[data-path="${activeFile}"]`);
+        if (activeTab) {
+          this.scrollTabIntoView(activeTab);
+        }
+      }
+    });
+    resizeObserver.observe(this.tabsContainer);
   },
 
   getLanguageForFile(filePath) {
@@ -625,12 +896,19 @@ function initializeTerminal() {
 function writeToTerminal(text, type = 'info') {
   if (!terminal) return;
   
+  // Remove Space placeholder on first write
+  const terminalContent = document.getElementById('terminal');
+  const spaceParagraph = terminalContent.querySelector('p');
+  if (spaceParagraph) {
+    terminalContent.removeChild(spaceParagraph);
+  }
+
   const timestamp = new Date().toLocaleTimeString();
   const colorMap = {
-    'info': '\x1b[36m',    // Cyan
-    'error': '\x1b[31m',   // Red
-    'success': '\x1b[32m', // Green
-    'command': '\x1b[33m'  // Yellow
+    'info': '\x1b[36m',    
+    'error': '\x1b[31m',   
+    'success': '\x1b[32m', 
+    'command': '\x1b[33m'  
   };
   
   const color = colorMap[type] || colorMap.info;
@@ -789,10 +1067,6 @@ function setActiveFile(filePath) {
 
 
 // Initialization
-document.addEventListener('DOMContentLoaded', () => {
-  TabManager.loadTabOrder(); // Load tab order on initialization
-});
-
 document.getElementById('cmmcomp').addEventListener('click', async () => {
   if (!activeFile || compiling) return;
   
@@ -810,31 +1084,30 @@ document.getElementById('cmmcomp').addEventListener('click', async () => {
     
     writeToTerminal('Starting CMM compilation...', 'command');
     writeToTerminal(`Input file: ${inputFile}`, 'info');
-    writeToTerminal(`Working directory: ${inputDir}`, 'info');
     
     const result = await window.electronAPI.compile({
       compiler: '/compilers/cmmcomp.exe',
       content: content,
       filePath: activeFile,
       workingDir: inputDir,
-      // Specify output path in the same directory as input
       outputPath: inputDir
     });
     
+    // Redirect compiler output with CMM-specific prefix
+    writeToTerminal('CMM to ASM compiler: Processing compilation', 'info');
+    
     if (result.stderr) {
-      // Split error messages by line and write them individually
       result.stderr.split('\n').forEach(line => {
         if (line.trim()) {
-          writeToTerminal(line, 'error');
+          writeToTerminal(`CMM to ASM compiler: ${line}`, 'error');
         }
       });
     }
     
     if (result.stdout) {
-      // Split success messages by line and write them individually
       result.stdout.split('\n').forEach(line => {
         if (line.trim()) {
-          writeToTerminal(line, 'success');
+          writeToTerminal(`CMM to ASM compiler: ${line}`, 'success');
         }
       });
     }
@@ -843,7 +1116,7 @@ document.getElementById('cmmcomp').addEventListener('click', async () => {
     
   } catch (error) {
     console.error('Compilation error:', error);
-    writeToTerminal(`Compilation error: ${error.message}`, 'error');
+    writeToTerminal(`CMM to ASM compiler error: ${error.message}`, 'error');
   } finally {
     compiling = false;
     button.disabled = false;
@@ -869,31 +1142,30 @@ document.getElementById('asmcomp').addEventListener('click', async () => {
     
     writeToTerminal('Starting ASM compilation...', 'command');
     writeToTerminal(`Input file: ${inputFile}`, 'info');
-    writeToTerminal(`Working directory: ${inputDir}`, 'info');
     
     const result = await window.electronAPI.compile({
       compiler: '/compilers/asmcomp.exe',
       content: content,
       filePath: activeFile,
       workingDir: inputDir,
-      // Specify output path in the same directory as input
       outputPath: inputDir
     });
     
+    // Redirect compiler output with ASM-specific prefix
+    writeToTerminal('ASM to MIF compiler: Processing compilation', 'info');
+    
     if (result.stderr) {
-      // Split error messages by line and write them individually
       result.stderr.split('\n').forEach(line => {
         if (line.trim()) {
-          writeToTerminal(line, 'error');
+          writeToTerminal(`ASM to MIF compiler: ${line}`, 'error');
         }
       });
     }
     
     if (result.stdout) {
-      // Split success messages by line and write them individually
       result.stdout.split('\n').forEach(line => {
         if (line.trim()) {
-          writeToTerminal(line, 'success');
+          writeToTerminal(`ASM to MIF compiler: ${line}`, 'success');
         }
       });
     }
@@ -902,7 +1174,7 @@ document.getElementById('asmcomp').addEventListener('click', async () => {
     
   } catch (error) {
     console.error('Compilation error:', error);
-    writeToTerminal(`Compilation error: ${error.message}`, 'error');
+    writeToTerminal(`ASM to MIF compiler error: ${error.message}`, 'error');
   } finally {
     compiling = false;
     button.disabled = false;
@@ -914,8 +1186,18 @@ document.getElementById('asmcomp').addEventListener('click', async () => {
 // Update the window.onload to include the refresh button initialization
 window.onload = () => {
   initMonaco();
-  
+  initAIAssistant();
   TabManager.init();
+
+  // Add AI Assistant button to toolbar
+  const toolbar = document.querySelector('.toolbar');
+  const aiButton = document.createElement('button');
+  
+  aiButton.className = 'toolbar-icon';
+  aiButton.innerHTML = '<i class="fas fa-robot"></i>';
+  aiButton.title = 'Toggle AI Assistant';
+  aiButton.addEventListener('click', toggleAIAssistant);
+  toolbar.appendChild(aiButton);
   
   // Existing event listeners
   document.getElementById('openFolderBtn').addEventListener('click', async () => {
@@ -1133,20 +1415,139 @@ if (websiteLink) {
 
 document.getElementById('showInfo').addEventListener('click', showInfoBox);
 
-const aiAssistantToggle = document.getElementById('aiAssistantToggle');
-const aiAssistant = document.getElementById('aiAssistant');
-
-
-aiAssistantToggle.addEventListener('click', () => {
-  const isOpen = aiAssistant.classList.toggle('open');
-  aiAssistantToggle.classList.toggle('active', isOpen);
+function initAIAssistant() {
+  aiAssistantContainer = document.createElement('div');
+  aiAssistantContainer.className = 'ai-assistant-container';
   
-  // Ajusta a largura da seção de IA e do editor
-  aiAssistant.style.width = isOpen ? '30%' : '0';
-  editorContainer.style.width = isOpen ? '70%' : '100%';
-  terminalContainer.style.width = isOpen ? '70%' : '100%';
-});
+  const resizer = document.createElement('div');
+  resizer.className = 'ai-resizer';
+  
+  // Create header with provider selection
+  const header = document.createElement('div');
+  header.className = 'ai-assistant-header';
+  header.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span class="ai-assistant-title">AI Assistant</span>
+      <select id="ai-provider-select" style="background: var(--background, #2d2d2d); color: var(--text-color, #ffffff); border: 1px solid var(--border-color, #404040); border-radius: 4px; padding: 2px;">
+        <option value="chatgpt">ChatGPT</option>
+        <option value="claude">Claude</option>
+      </select>
+    </div>
+    <i class="fas fa-times ai-assistant-close"></i>
+  `;
+  
+  // Create webview container
+  const webviewContainer = document.createElement('div');
+  webviewContainer.className = 'ai-assistant-content';
+  webviewContainer.style.padding = '0';  // Remove padding for webview
+  
+  // Create webview element
+  const webview = document.createElement('webview');
+  webview.style.width = '100%';
+  webview.style.height = '100%';
+  webview.src = 'https://chat.openai.com';  // Default to ChatGPT
+  webview.nodeintegration = 'false';
+  webviewContainer.appendChild(webview);
+  
+  // Append elements
+  aiAssistantContainer.appendChild(resizer);
+  aiAssistantContainer.appendChild(header);
+  aiAssistantContainer.appendChild(webviewContainer);
+  document.body.appendChild(aiAssistantContainer);
+  
+  // Add event listeners
+  const closeButton = header.querySelector('.ai-assistant-close');
+  closeButton.addEventListener('click', toggleAIAssistant);
+  
+  const providerSelect = header.querySelector('#ai-provider-select');
+  providerSelect.addEventListener('change', (e) => {
+    currentProvider = e.target.value;
+    const url = currentProvider === 'chatgpt' ? 
+      'https://chat.openai.com' : 
+      'https://claude.ai';
+    webview.src = url;
+  });
+  
+  // Setup resizing
+  setupAIAssistantResize(resizer);
+}
 
+// Add toggle function
+function toggleAIAssistant() {
+  aiAssistantVisible = !aiAssistantVisible;
+  aiAssistantContainer.classList.toggle('visible');
+  
+  // Adjust editor layout if needed
+  if (editor) {
+    editor.layout();
+  }
+}
+
+// Add resize functionality
+function setupAIAssistantResize(resizer) {
+  let startX, startWidth;
+  
+  function startResize(e) {
+    startX = e.clientX;
+    startWidth = parseInt(getComputedStyle(aiAssistantContainer).width, 10);
+    document.addEventListener('mousemove', resize);
+    document.addEventListener('mouseup', stopResize);
+  }
+  
+  function resize(e) {
+    const width = startWidth - (e.clientX - startX);
+    aiAssistantContainer.style.width = `${width}px`;
+    
+    // Adjust editor layout
+    if (editor) {
+      editor.layout();
+    }
+  }
+  
+  function stopResize() {
+    document.removeEventListener('mousemove', resize);
+    document.removeEventListener('mouseup', stopResize);
+  }
+  
+  resizer.addEventListener('mousedown', startResize);
+}
+
+// Add message handling
+async function sendMessage(message) {
+  if (!message.trim()) return;
+  
+  const content = aiAssistantContainer.querySelector('.ai-assistant-content');
+  const textarea = aiAssistantContainer.querySelector('.ai-assistant-textarea');
+  
+  // Add user message
+  const userMessage = document.createElement('div');
+  userMessage.className = 'message user-message';
+  userMessage.textContent = message;
+  content.appendChild(userMessage);
+  
+  // Clear input
+  textarea.value = '';
+  
+  // Scroll to bottom
+  content.scrollTop = content.scrollHeight;
+  
+  try {
+    // Here you would typically make an API call to your AI service
+    // For now, we'll just add a placeholder response
+    const response = "I'm your AI assistant. I can help you with coding questions and IDE-related tasks.";
+    
+    // Add assistant message
+    const assistantMessage = document.createElement('div');
+    assistantMessage.className = 'message assistant-message';
+    assistantMessage.textContent = response;
+    content.appendChild(assistantMessage);
+    
+    // Scroll to bottom again
+    content.scrollTop = content.scrollHeight;
+  } catch (error) {
+    console.error('Error sending message:', error);
+  }
+}
 
 // Add the button to the toolbar (add this where other toolbar buttons are defined)
 const processorHubButton = document.createElement('button');
@@ -1421,3 +1822,45 @@ processorHubButton.addEventListener('click', () => {
     modal.remove();
   });
 });
+
+// Add this to your initialization or early in the renderer process
+window.electronAPI.on('compiler-stdout', (data) => {
+  writeToTerminal(`Compiler Output: ${data.trim()}`, 'success');
+});
+
+window.electronAPI.on('compiler-stderr', (data) => {
+  writeToTerminal(`Compiler Error: ${data.trim()}`, 'error');
+});
+
+document.getElementById('browseBtn').addEventListener('click', async () => {
+  try {
+    const result = await window.electronAPI.selectDirectory();
+    if (result) {
+      document.getElementById('projectLocationInput').value = result;
+    }
+  } catch (error) {
+    console.error('Error selecting directory:', error);
+  }
+});
+
+if (editor.getModel()) {
+  editor.getModel().dispose(); // Destrói o modelo atual
+  editor.setModel(null);
+}
+
+function closeFile(tabId) {
+  const tab = document.getElementById(tabId);
+  const editor = monaco.editor.getModels().find(model => model.uri.toString() === tabId);
+  
+  if (editor) {
+      editor.dispose(); // Desfaz o Monaco Editor
+  }
+
+  if (tab) {
+      tab.remove(); // Remove a aba
+  }
+
+  // Remova a referência do arquivo da lista de arquivos abertos, se necessário
+  openFiles = openFiles.filter(file => file.tabId !== tabId); // Filtra o arquivo da lista
+}
+
