@@ -60,8 +60,34 @@ function createMainWindow() {
   });
 }
 
+function createUpdateWindow() {
+  const updateWindow = new BrowserWindow({
+    width: 450,
+    height: 600,
+    resizable: false,
+    modal: true,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'update-preload.js')
+    }
+  });
+
+  updateWindow.loadFile(path.join(__dirname, 'update-modal.html'));
+}
+
+// Modify the update available handler to show the update window
+autoUpdater.on('update-available', (info) => {
+  createUpdateWindow();
+  mainWindow.webContents.send('update-available', {
+    currentVersion: app.getVersion(),
+    newVersion: info.version
+  });
+});
+
 app.whenReady().then(() => {
   createSplashScreen(); // Exibir a splash screen
+  autoUpdater.checkForUpdates(); // Explicitly check for updates
 });
 
 
@@ -162,6 +188,11 @@ autoUpdater.on('update-downloaded', (info) => {
   });
 });
 
+autoUpdater.on('error', (error) => {
+  console.error('Update error:', error);
+  dialog.showErrorBox('Update Error', `An error occurred during update: ${error.message}`);
+});
+
 // IPC handlers for update actions
 ipcMain.on('start-download', () => {
   autoUpdater.downloadUpdate();
@@ -174,6 +205,12 @@ ipcMain.on('install-update', () => {
 // Evento para tratar erros de atualização
 autoUpdater.on('error', (error) => {
   dialog.showErrorBox('Erro de atualização', `Erro ao atualizar o aplicativo: ${error}`);
+});
+
+autoUpdater.setFeedURL({
+  provider: 'github',
+  repo: 'Aurora',
+  owner: 'Chrysthofer'
 });
 
 ipcMain.handle('compile', async (event, { compiler, content, filePath, workingDir }) => {
@@ -397,3 +434,4 @@ ipcMain.handle('getFolderFiles', async (event, folderPath) => {
     throw new Error('Failed to read folder');
   }
 });
+
