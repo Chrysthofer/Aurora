@@ -60,6 +60,9 @@
     cursor: pointer;
     font-size: 22px;
     color: var(--sidebar-icon);
+    position: absolute;
+    margin-top: -220px;
+    margin-left: 10px;
   }
   
   .sidebar-header i:hover {

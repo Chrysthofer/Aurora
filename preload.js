@@ -19,5 +19,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   getFolderFiles: (folderPath) => ipcRenderer.invoke('getFolderFiles', folderPath),  // Expondo a função aqui
 
+  onUpdateAvailable: (callback) => ipcRenderer.on('update-available', callback),
+  onDownloadProgress: (callback) => ipcRenderer.on('update-download-progress', callback),
+  onUpdateDownloaded: (callback) => ipcRenderer.on('update-downloaded', callback),
+  startDownload: () => ipcRenderer.send('start-download'),
+  installUpdate: () => ipcRenderer.send('install-update')
+  
 });
 

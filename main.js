@@ -3,35 +3,67 @@ const { autoUpdater } = require('electron-updater');
 const { exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+
 (async () => {
-    const StoreModule = await import('electron-store');
-    const Store = StoreModule.default;
-    store = new Store(); // Ensure store is accessible globally or passed as needed
+  const StoreModule = await import('electron-store');
+  const Store = StoreModule.default;
+  store = new Store(); // Garantir que store seja acessível globalmente
 })();
 
+let mainWindow; // Variável para a janela principal
+let splashWindow; // Variável para a splash screen
 
-function createWindow() {
-    const win = new BrowserWindow({
-      width: 1200,
-      height: 800,
-      icon: path.join(__dirname, 'assets/icons/aurora_borealis-2.ico'),
-      webPreferences: {
-        webviewTag: true,
-        nodeIntegration: false,
-        contextIsolation: true,
-        preload: path.join(__dirname, 'preload.js')
-      },
-      backgroundColor: '#1e1e1e',
-      show: false
-    });
-  
-    win.loadFile('index.html');
-    win.once('ready-to-show', () => {
-      win.show();
-    });
-  }
+function createSplashScreen() {
+  // Criar a janela da splash screen com a imagem SVG
+  splashWindow = new BrowserWindow({
+    width: 400,
+    height: 500,
+    frame: false, // Sem borda
+    transparent: true, // Janela transparente
+    alwaysOnTop: true, // Sempre acima
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  });
 
-app.whenReady().then(createWindow);
+  splashWindow.loadFile(path.join(__dirname, 'splash.html')); // Carregar o arquivo HTML da splash screen
+
+  // Fechar a splash screen após 2 segundos
+  setTimeout(() => {
+    splashWindow.close(); // Fechar a splash screen
+    createMainWindow(); // Criar e mostrar a janela principal
+  }, 2000); // 2000 milissegundos (2 segundos)
+}
+
+function createMainWindow() {
+  // Criar a janela principal
+  mainWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    icon: path.join(__dirname, 'assets/icons/aurora_borealis-2.ico'),
+    webPreferences: {
+      webviewTag: true,
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
+    },
+    backgroundColor: '#1e1e1e',
+    show: false, // Janela principal começa oculta
+  });
+
+  mainWindow.loadFile('index.html'); // Carregar o arquivo da janela principal
+
+  // Quando a janela principal estiver pronta para ser exibida
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show(); // Mostrar a janela principal
+  });
+}
+
+app.whenReady().then(() => {
+  createSplashScreen(); // Exibir a splash screen
+});
+
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -102,40 +134,41 @@ ipcMain.handle('refreshFolder', async () => {
 });
 
 
-// Configurações do autoUpdater
-autoUpdater.autoDownload = false;  // Baixe automaticamente após confirmação
+// Update autoUpdater configuration
+autoUpdater.autoDownload = false;
 
-// Verifica atualizações ao iniciar o app
-app.on('ready', () => {
-  autoUpdater.checkForUpdates();
-});
-
-// Evento para quando uma nova atualização está disponível
+// Modify the update event handlers
 autoUpdater.on('update-available', (info) => {
-  const userResponse = dialog.showMessageBoxSync({
-    type: 'info',
-    title: 'Atualização disponível',
-    message: `Nova versão ${info.version} disponível. Deseja baixar agora?`,
-    buttons: ['Sim', 'Não']
+  // Send update information to renderer process
+  mainWindow.webContents.send('update-available', {
+    currentVersion: app.getVersion(),
+    newVersion: info.version
   });
-
-  if (userResponse === 0) { // Se o usuário clicar em "Sim"
-    autoUpdater.downloadUpdate();
-  }
 });
 
-// Evento para quando o download da atualização está completo
-autoUpdater.on('update-downloaded', () => {
-  const userResponse = dialog.showMessageBoxSync({
-    type: 'info',
-    title: 'Instalar atualização',
-    message: 'A atualização foi baixada. O aplicativo será reiniciado para instalar a nova versão.',
-    buttons: ['Reiniciar', 'Mais tarde']
+autoUpdater.on('download-progress', (progressObj) => {
+  // Send download progress to renderer process
+  mainWindow.webContents.send('update-download-progress', {
+    percent: progressObj.percent,
+    transferred: progressObj.transferred,
+    total: progressObj.total
   });
+});
 
-  if (userResponse === 0) { // Se o usuário clicar em "Reiniciar"
-    autoUpdater.quitAndInstall();
-  }
+autoUpdater.on('update-downloaded', (info) => {
+  // Send update downloaded notification to renderer
+  mainWindow.webContents.send('update-downloaded', {
+    version: info.version
+  });
+});
+
+// IPC handlers for update actions
+ipcMain.on('start-download', () => {
+  autoUpdater.downloadUpdate();
+});
+
+ipcMain.on('install-update', () => {
+  autoUpdater.quitAndInstall();
 });
 
 // Evento para tratar erros de atualização
