@@ -4,16 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AURORA IDE</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="./css/styles.css">
   <link rel="stylesheet" href="node_modules/monaco-editor/min/vs/editor/editor.main.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="node_modules/@fortawesome/fontawesome-free/css/all.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/file-icon-vectors@1.0.0/dist/file-icon-vectors.min.css" />
   <link rel="stylesheet" href="node_modules/xterm/css/xterm.css">
-  <link rel="stylesheet" href="info.css">
-  <link rel="stylesheet" href="ia.css">
-  <link rel="stylesheet" href="hamburguer.css">
-  <link rel="stylesheet" href="modal.css">
+  <link rel="stylesheet" href="./css/info.css">
+  <link rel="stylesheet" href="./css/ia.css">
+  <link rel="stylesheet" href="./css/hamburguer.css">
+  <link rel="stylesheet" href="./css/modal.css">
+  <link rel="stylesheet" href="./css/terminal.css">
+  <link rel="stylesheet" href="./css/report.css">
 
 </head>
 <body class="theme-dark">
@@ -83,6 +85,47 @@
       </li>
     </ul>
   </div>
+
+  <!-- Adicionar um botão de Bug Report -->
+
+<button id="open-bug-report">
+  <i class="fa-solid fa-bug"></i>
+</button>
+<!-- Janela Modal para o Bug Report -->
+<div id="bug-report-modal" class="modal hidden">
+  <div class="modal-content">
+    <h2><i class="fa-solid fa-bug"></i>Bug Report</h2>
+    <form id="bug-report-form" action="https://formspree.io/f/xgvebqla" method="POST">
+      <label for="bug-title">Título</label>
+      <input type="text" id="bug-title" name="bug-title" placeholder="Digite o título do bug" required />
+
+      <label for="bug-body">Descrição</label>
+      <textarea id="bug-body" name="bug-body" placeholder="Descreva o problema" required></textarea>
+
+      <label>Severidade</label>
+      <div class="severity-options">
+        <label>
+          <input type="radio" name="severity" value="low" required />
+          <span class="severity-dot low"></span> Baixa
+        </label>
+        <label>
+          <input type="radio" name="severity" value="medium" required />
+          <span class="severity-dot medium"></span> Média
+        </label>
+        <label>
+          <input type="radio" name="severity" value="high" required />
+          <span class="severity-dot high"></span> Alta
+        </label>
+      </div>
+
+      <button type="submit">Enviar</button>
+      <button type="button" id="close-bug-report">Cancelar</button>
+    </form>
+  </div>
+</div>
+
+
+
   <!-- Modal Overlay -->
   <div id="newProjectModal" class="modal hidden">
     <div class="modal-content">
@@ -122,9 +165,27 @@
       </div>
       <div class="resizer-horizontal"></div>
       <div id="terminal-container" class="terminal-container">
-        <div class="terminal-header">Terminal</div>
-         <p> Space </p>
-        <div id="terminal" class="terminal-content"></div>
+        <div class="terminal-tabs">
+          <button class="tab active" data-terminal="tcmm">TCMM</button>
+          <button class="tab" data-terminal="tasm">TASM</button>
+          <button class="tab" data-terminal="tcmd">TCMD</button>
+        </div>
+        <div class="terminal-content" id="terminal-tcmm">
+          <div class="terminal-header">TCMM Terminal</div>
+          <div class="terminal-body">Bem-vindo ao Terminal TCMM!</div>
+        </div>
+        <div class="terminal-content hidden" id="terminal-tasm">
+          <div class="terminal-header">TASM Terminal</div>
+          <div class="terminal-body">Bem-vindo ao Terminal TASM!</div>
+        </div>
+        <div class="terminal-content hidden" id="terminal-tcmd">
+          <div class="terminal-header">CMD Terminal</div>
+          <div class="terminal-body">
+            <div id="cmd-output" style="height: 150px; overflow-y: auto; background: #000; color: #0f0; padding: 10px; font-family: monospace;"></div>
+            <input id="cmd-input" type="text" placeholder="Digite um comando..." style="width: 100%; padding: 10px; font-family: monospace;"/>
+          </div>
+        </div>
+      </div>
       </div>
     </div>
   </div>
@@ -168,6 +229,7 @@
     </section>
   </div>
 </div>
+<div id="terminal"></div>
 
 
   <div class="status-bar">
@@ -181,8 +243,13 @@
     require.config({ paths: { vs: 'node_modules/monaco-editor/min/vs' } });
   </script>
   <script src="node_modules/xterm/lib/xterm.js"></script>
-  <script src="renderer.js"></script>
-  <script src="hamburguer.js"></script>
-  <script src="modal.js"></script>
+  <script src="./js/renderer.js"></script>
+  <script src="./js/hamburguer.js"></script>
+  <script src="./js/modal.js"></script>
+  <script src="./js/terminal.js"></script>
+  <script src="./js/report.js" type="module"></script>
+  <script src="./js/index.js" type="module"></script>
+  <script src="node_modules/xterm/lib/xterm.js"></script>
+    <script src="node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
 </body>
 </html>

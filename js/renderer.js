@@ -1863,4 +1863,3 @@ function closeFile(tabId) {
   // Remova a referência do arquivo da lista de arquivos abertos, se necessário
   openFiles = openFiles.filter(file => file.tabId !== tabId); // Filtra o arquivo da lista
 }
-

@@ -1,6 +1,17 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  runCommand: (command) => {
+    // Implementação de execução de comando
+    return new Promise((resolve, reject) => {
+      try {
+        // Lógica para executar comando
+        resolve(`Comando executado: ${command}`);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  },
   openFolder: () => ipcRenderer.invoke('open-folder'),
   readFile: (path) => ipcRenderer.invoke('read-file', path),
   saveFile: (data) => ipcRenderer.invoke('save-file', data),
@@ -24,6 +35,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onUpdateDownloaded: (callback) => ipcRenderer.on('update-downloaded', callback),
   startDownload: () => ipcRenderer.send('start-download'),
   installUpdate: () => ipcRenderer.send('install-update')
-
 });
 

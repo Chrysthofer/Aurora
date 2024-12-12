@@ -4,6 +4,7 @@ const { exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
+
 (async () => {
   const StoreModule = await import('electron-store');
   const Store = StoreModule.default;
@@ -18,6 +19,7 @@ function createSplashScreen() {
   splashWindow = new BrowserWindow({
     width: 400,
     height: 500,
+    icon: path.join(__dirname, 'assets/icons/aurora_borealis-2.ico'),
     frame: false, // Sem borda
     transparent: true, // Janela transparente
     alwaysOnTop: true, // Sempre acima
@@ -27,7 +29,7 @@ function createSplashScreen() {
     },
   });
 
-  splashWindow.loadFile(path.join(__dirname, 'splash.html')); // Carregar o arquivo HTML da splash screen
+  splashWindow.loadFile(path.join(__dirname, 'html', 'splash.html')); // Carregar o arquivo HTML da splash screen
 
   // Fechar a splash screen após 2 segundos
   setTimeout(() => {
@@ -46,7 +48,7 @@ function createMainWindow() {
       webviewTag: true,
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'js', 'preload.js'),
     },
     backgroundColor: '#1e1e1e',
     show: false, // Janela principal começa oculta
@@ -291,44 +293,61 @@ ipcMain.handle('select-directory', async () => {
 
 // IPC Handler for project creation
 ipcMain.handle('create-processor-project', async (event, formData) => {
-  const projectPath = path.join(formData.projectLocation, formData.projectName);
-  
-  // Create main project directory
-  await fs.mkdir(projectPath, { recursive: true });
-  
-  // Create common subdirectories
-  const directories = [
-    'src',
-    'build',
-    'docs',
-    'test'
-  ];
-  
-  for (const dir of directories) {
-    await fs.mkdir(path.join(projectPath, dir), { recursive: true });
+  try {
+    const projectPath = path.join(formData.projectLocation, formData.projectName);
+
+    // Cria o diretório principal do projeto
+    await fs.mkdir(projectPath, { recursive: true });
+
+    // Cria subpastas comuns
+    const directories = [
+      'src',
+      'build',
+      'docs',
+      'test'
+    ];
+
+    for (const dir of directories) {
+      await fs.mkdir(path.join(projectPath, dir), { recursive: true });
+    }
+
+    // Cria a pasta "Software" e a subpasta com o nome do processador + "_S"
+    const softwarePath = path.join(projectPath, 'Software');
+    const processorFolderPath = path.join(softwarePath, `${formData.processorName}_S`);
+    await fs.mkdir(processorFolderPath, { recursive: true });
+
+    // Cria o arquivo .cmm dentro da pasta do processador com um "Hello World"
+    const cmmFilePath = path.join(processorFolderPath, `${formData.processorName}.cmm`);
+    const cmmContent = `// Hello World in ${formData.processorName} processor code\nconsole.log("Hello World");`;
+
+    await fs.writeFile(cmmFilePath, cmmContent, 'utf8');
+
+    // Cria o arquivo de configuração do processador
+    const config = {
+      processorName: formData.processorName,
+      pointType: formData.pointType,
+      nBits: parseInt(formData.nBits),
+      nbMantissa: formData.nbMantissa ? parseInt(formData.nbMantissa) : null,
+      nbExponent: formData.nbExponent ? parseInt(formData.nbExponent) : null,
+      dataStackSize: parseInt(formData.dataStackSize),
+      instructionStackSize: parseInt(formData.instructionStackSize),
+      inputPorts: parseInt(formData.inputPorts),
+      outputPorts: parseInt(formData.outputPorts),
+      gain: parseFloat(formData.gain)
+    };
+
+    await fs.writeFile(
+      path.join(projectPath, 'processor-config.json'),
+      JSON.stringify(config, null, 2)
+    );
+
+    return projectPath; // Retorna o caminho do projeto criado
+  } catch (error) {
+    console.error('Error creating processor project:', error);
+    throw error;
   }
-  
-  // Create initial configuration file
-  const config = {
-    processorName: formData.processorName,
-    pointType: formData.pointType,
-    nBits: parseInt(formData.nBits),
-    nbMantissa: formData.nbMantissa ? parseInt(formData.nbMantissa) : null,
-    nbExponent: formData.nbExponent ? parseInt(formData.nbExponent) : null,
-    dataStackSize: parseInt(formData.dataStackSize),
-    instructionStackSize: parseInt(formData.instructionStackSize),
-    inputPorts: parseInt(formData.inputPorts),
-    outputPorts: parseInt(formData.outputPorts),
-    gain: parseFloat(formData.gain)
-  };
-  
-  await fs.writeFile(
-    path.join(projectPath, 'processor-config.json'),
-    JSON.stringify(config, null, 2)
-  );
-  
-  return projectPath;
 });
+
 
 
 // IPC Handler for compilation
@@ -433,5 +452,36 @@ ipcMain.handle('getFolderFiles', async (event, folderPath) => {
     console.error('Error reading folder:', error);
     throw new Error('Failed to read folder');
   }
+});
+
+// TCMD
+
+ipcMain.handle('run-command', (event, command) => {
+  return new Promise((resolve, reject) => {
+    const cmdProcess = spawn('cmd.exe', ['/c', command], { shell: true });
+
+    let result = '';
+    let error = '';
+
+    cmdProcess.stdout.on('data', (data) => {
+      result += data.toString();
+    });
+
+    cmdProcess.stderr.on('data', (data) => {
+      error += data.toString();
+    });
+
+    cmdProcess.on('close', (code) => {
+      if (code === 0) {
+        resolve(result.trim());
+      } else {
+        reject(error.trim() || `Command failed with code ${code}`);
+      }
+    });
+
+    cmdProcess.on('error', (err) => {
+      reject(err.message);
+    });
+  });
 });
 

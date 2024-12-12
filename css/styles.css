@@ -81,6 +81,77 @@
     resize: horizontal;
   }
 
+
+  .editor-terminal-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  
+  .terminal-container {
+    background-color: #1e1e1e;
+    color: #fff;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .terminal-tabs {
+    display: flex;
+    background-color: #333;
+    border-bottom: 2px solid #444;
+  }
+  
+  .tab {
+    flex: 1;
+    padding: 10px;
+    text-align: center;
+    background-color: #333;
+    color: #fff;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .tab:hover {
+    background-color: #444;
+  }
+  
+  .tab.active {
+    background-color: #555;
+    font-weight: bold;
+  }
+  
+  .terminal-content {
+    flex: 1;
+    padding: 15px;
+    font-family: monospace;
+    overflow-y: auto;
+    transition: opacity 0.3s ease;
+  }
+  
+  .hidden {
+    display: none;
+  }
+  
+  #terminal-tcmm {
+    background-color: #ffc40056;
+  }
+  
+  #terminal-tasm {
+    background-color: #00065c;
+  }
+
+  #terminal-tcmd {
+    background-color: #000;
+  }
+  
+  .terminal-header {
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
+
   .terminal-container {
     height: 200px; /* Altura inicial do terminal */
     background-color: #1e1e1e;
@@ -91,19 +162,7 @@
     transition: height 0.2s ease; /* Adiciona uma transição suave ao redimensionar */
     overflow-y: auto; /* Para rolagem quando o terminal é muito pequeno */
   }
-  
-  .terminal-header {
-    background-color: #333;
-    padding: 8px;
-    font-weight: 200;
-  }
-  
-  .terminal-content {
-    flex: 1;
-    padding: 10px;
-    font-family: monospace;
-  }
-  
+
   
   .editor-terminal-container {
     flex: 1;
@@ -112,12 +171,7 @@
     overflow: hidden;
   }
   
-  .editor-container {
-    flex: 1;
-    position: relative;
-    transition: flex 0.2s ease;
-  }
-  
+
   .file-tree-header {
     padding: 8px 16px;
     font-size: 11px;
