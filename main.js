@@ -48,6 +48,7 @@ function createMainWindow() {
       webviewTag: true,
       nodeIntegration: false,
       contextIsolation: true,
+      enableRemoteModule: true,
       preload: path.join(__dirname, 'js', 'preload.js'),
     },
     backgroundColor: '#1e1e1e',
@@ -454,34 +455,27 @@ ipcMain.handle('getFolderFiles', async (event, folderPath) => {
   }
 });
 
-// TCMD
 
-ipcMain.handle('run-command', (event, command) => {
-  return new Promise((resolve, reject) => {
-    const cmdProcess = spawn('cmd.exe', ['/c', command], { shell: true });
+// Listen for the run-executable event
+ipcMain.on('run-executable', (event, exePath) => {
+  const child = spawn(exePath, [], { stdio: 'inherit' });
 
-    let result = '';
-    let error = '';
+  child.on('error', (err) => {
+    console.error(`Failed to start ${exePath}:`, err);
+  });
 
-    cmdProcess.stdout.on('data', (data) => {
-      result += data.toString();
-    });
-
-    cmdProcess.stderr.on('data', (data) => {
-      error += data.toString();
-    });
-
-    cmdProcess.on('close', (code) => {
-      if (code === 0) {
-        resolve(result.trim());
-      } else {
-        reject(error.trim() || `Command failed with code ${code}`);
-      }
-    });
-
-    cmdProcess.on('error', (err) => {
-      reject(err.message);
-    });
+  child.on('close', (code) => {
+    console.log(`${exePath} exited with code ${code}`);
   });
 });
 
+// Open the calculator when requested from the renderer process
+ipcMain.on('open-calculator', () => {
+  exec('calc', (error, stdout, stderr) => {
+      if (error) {
+          console.error(`Error opening calculator: ${error}`);
+      } else {
+          console.log('Calculator opened successfully');
+      }
+  });
+});

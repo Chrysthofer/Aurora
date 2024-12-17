@@ -893,27 +893,53 @@ function initializeTerminal() {
 }
 
 // Utility function to write to terminal with colors
-function writeToTerminal(text, type = 'info') {
-  if (!terminal) return;
-  
-  // Remove Space placeholder on first write
-  const terminalContent = document.getElementById('terminal');
-  const spaceParagraph = terminalContent.querySelector('p');
-  if (spaceParagraph) {
-    terminalContent.removeChild(spaceParagraph);
+function writeToTerminal(terminalId, message, type = 'info') {
+  const terminalBody = document.querySelector(`#${terminalId} .terminal-body`);
+  const timestamp = new Date().toLocaleString(); // Get current date and time
+
+   // Create a log entry
+   const logEntry = document.createElement('div');
+   logEntry.classList.add('log-entry', type); // Adding type classes (command, success, error, info)
+  if (!terminalBody) return;
+
+  // Add date and time to the log header
+  const timestampDiv = document.createElement('div');
+  timestampDiv.classList.add('timestamp');
+  timestampDiv.textContent = timestamp;
+  logEntry.appendChild(timestampDiv);
+
+  // Check for specific message to change color (Atenção na linha)
+  if (message.includes("Atenção na linha")) {
+    const lineNumberMatch = message.match(/Atenção na linha (\d+)/);
+    if (lineNumberMatch) {
+      logEntry.classList.add('highlight-line');
+    }
   }
 
-  const timestamp = new Date().toLocaleTimeString();
-  const colorMap = {
-    'info': '\x1b[36m',    
-    'error': '\x1b[31m',   
-    'success': '\x1b[32m', 
-    'command': '\x1b[33m'  
-  };
-  
-  const color = colorMap[type] || colorMap.info;
-  terminal.writeln(`${color}[${timestamp}]\x1b[0m ${text}`);
+  // Add message to log entry
+  const messageDiv = document.createElement('div');
+  messageDiv.classList.add('log-message');
+  messageDiv.textContent = message;
+  logEntry.appendChild(messageDiv);
+
+  // Add log entry to terminal body
+  terminalBody.appendChild(logEntry);
+
+  // Ensure scroll is at the bottom after adding log
+  terminalBody.scrollTop = terminalBody.scrollHeight;
+
+  // Cria uma nova linha para a mensagem
+  const messageElement = document.createElement('div');
+  messageElement.classList.add(type); // Adiciona a classe com base no tipo da mensagem (sucesso, erro, etc.)
+  messageElement.textContent = message;
+
+  // Adiciona a nova mensagem ao terminal
+  terminalBody.appendChild(messageElement);
+
+  // Rola o terminal até o final para mostrar a última mensagem
+  terminalBody.scrollTop = terminalBody.scrollHeight;
 }
+
 
 // Initialize Monaco Editor
 async function initMonaco() {
@@ -1065,26 +1091,28 @@ function setActiveFile(filePath) {
   editor.setModel(monaco.editor.createModel(content, language));
 }
 
-
 // Initialization
+// Evento de compilação do CMM
 document.getElementById('cmmcomp').addEventListener('click', async () => {
   if (!activeFile || compiling) return;
-  
+
+  activateTerminal('tcmm', 'terminal-tcmm'); // Foca no terminal TCMM
+
   const button = document.getElementById('cmmcomp');
   const icon = button.querySelector('i');
-  
+
   try {
     compiling = true;
     button.disabled = true;
     icon.className = 'fas fa-spinner fa-spin';
-    
+
     const content = editor.getValue();
     const inputDir = activeFile.substring(0, activeFile.lastIndexOf('\\') + 1);
     const inputFile = activeFile.split('\\').pop();
-    
-    writeToTerminal('Starting CMM compilation...', 'command');
-    writeToTerminal(`Input file: ${inputFile}`, 'info');
-    
+
+    writeToTerminal('terminal-tcmm', 'Starting CMM compilation...', 'command');
+    writeToTerminal('terminal-tcmm', `Input file: ${inputFile}`, 'info');
+
     const result = await window.electronAPI.compile({
       compiler: '/compilers/cmmcomp.exe',
       content: content,
@@ -1092,57 +1120,60 @@ document.getElementById('cmmcomp').addEventListener('click', async () => {
       workingDir: inputDir,
       outputPath: inputDir
     });
-    
-    // Redirect compiler output with CMM-specific prefix
-    writeToTerminal('CMM to ASM compiler: Processing compilation', 'info');
-    
+
+    // Atualizando com a saída do compilador
+    writeToTerminal('terminal-tcmm', 'CMM to ASM compiler: Processing compilation', 'info');
+
     if (result.stderr) {
       result.stderr.split('\n').forEach(line => {
         if (line.trim()) {
-          writeToTerminal(`CMM to ASM compiler: ${line}`, 'error');
+          writeToTerminal('terminal-tcmm', `CMM to ASM compiler: ${line}`, 'error');
         }
       });
     }
-    
+
     if (result.stdout) {
       result.stdout.split('\n').forEach(line => {
         if (line.trim()) {
-          writeToTerminal(`CMM to ASM compiler: ${line}`, 'success');
+          writeToTerminal('terminal-tcmm', `CMM to ASM compiler: ${line}`, 'success');
         }
       });
     }
-    
-    writeToTerminal('CMM compilation finished.', 'info');
-    
+
+    writeToTerminal('terminal-tcmm', 'CMM compilation finished.', 'info');
+
   } catch (error) {
     console.error('Compilation error:', error);
-    writeToTerminal(`CMM to ASM compiler error: ${error.message}`, 'error');
+    writeToTerminal('terminal-tcmm', `CMM to ASM compiler error: ${error.message}`, 'error');
   } finally {
     compiling = false;
     button.disabled = false;
-    icon.className = 'fas fa-code';
+    icon.className = 'fa-solid fa-c';
   }
 });
 
-// Update the ASM compiler event listener
+
+// Evento de compilação do ASM
 document.getElementById('asmcomp').addEventListener('click', async () => {
   if (!activeFile || compiling) return;
-  
+
+  activateTerminal('tasm', 'terminal-tasm'); // Foca no terminal TASM
+
   const button = document.getElementById('asmcomp');
   const icon = button.querySelector('i');
-  
+
   try {
     compiling = true;
     button.disabled = true;
     icon.className = 'fas fa-spinner fa-spin';
-    
+
     const content = editor.getValue();
     const inputDir = activeFile.substring(0, activeFile.lastIndexOf('\\') + 1);
     const inputFile = activeFile.split('\\').pop();
-    
-    writeToTerminal('Starting ASM compilation...', 'command');
-    writeToTerminal(`Input file: ${inputFile}`, 'info');
-    
+
+    writeToTerminal('terminal-tasm', 'Starting ASM compilation...', 'command');
+    writeToTerminal('terminal-tasm', `Input file: ${inputFile}`, 'info');
+
     const result = await window.electronAPI.compile({
       compiler: '/compilers/asmcomp.exe',
       content: content,
@@ -1150,37 +1181,39 @@ document.getElementById('asmcomp').addEventListener('click', async () => {
       workingDir: inputDir,
       outputPath: inputDir
     });
-    
-    // Redirect compiler output with ASM-specific prefix
-    writeToTerminal('ASM to MIF compiler: Processing compilation', 'info');
-    
+
+    // Atualizando com a saída do compilador
+    writeToTerminal('terminal-tasm', 'ASM to MIF compiler: Processing compilation', 'info');
+
     if (result.stderr) {
       result.stderr.split('\n').forEach(line => {
         if (line.trim()) {
-          writeToTerminal(`ASM to MIF compiler: ${line}`, 'error');
+          writeToTerminal('terminal-tasm', `ASM to MIF compiler: ${line}`, 'error');
         }
       });
     }
-    
+
     if (result.stdout) {
       result.stdout.split('\n').forEach(line => {
         if (line.trim()) {
-          writeToTerminal(`ASM to MIF compiler: ${line}`, 'success');
+          writeToTerminal('terminal-tasm', `ASM to MIF compiler: ${line}`, 'success');
         }
       });
     }
-    
-    writeToTerminal('ASM compilation finished.', 'info');
-    
+
+    writeToTerminal('terminal-tasm', 'ASM compilation finished.', 'info');
+
   } catch (error) {
     console.error('Compilation error:', error);
-    writeToTerminal(`ASM to MIF compiler error: ${error.message}`, 'error');
+    writeToTerminal('terminal-tasm', `ASM to MIF compiler error: ${error.message}`, 'error');
   } finally {
     compiling = false;
     button.disabled = false;
-    icon.className = 'fas fa-microchip';
+    icon.className = 'fa-solid fa-cube';
   }
 });
+
+
 
 // Initialize everything
 // Update the window.onload to include the refresh button initialization
@@ -1863,3 +1896,17 @@ function closeFile(tabId) {
   // Remova a referência do arquivo da lista de arquivos abertos, se necessário
   openFiles = openFiles.filter(file => file.tabId !== tabId); // Filtra o arquivo da lista
 }
+
+
+const { ipcRenderer } = require('electron');
+
+// Add click listener to the AST button
+document.getElementById('open-exe').addEventListener('click', () => {
+  ipcRenderer.send('run-executable', './compilers/code.exe');
+});
+
+// Add event listener for the Calculator button
+document.getElementById('open-calculator').addEventListener('click', () => {
+  // Send a message to the main process to open the calculator
+  ipcRenderer.send('open-calculator');
+});

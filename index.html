@@ -9,7 +9,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="node_modules/@fortawesome/fontawesome-free/css/all.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/file-icon-vectors@1.0.0/dist/file-icon-vectors.min.css" />
-  <link rel="stylesheet" href="node_modules/xterm/css/xterm.css">
   <link rel="stylesheet" href="./css/info.css">
   <link rel="stylesheet" href="./css/ia.css">
   <link rel="stylesheet" href="./css/hamburguer.css">
@@ -67,10 +66,10 @@
         <i class="fas fa-language"></i>
         <span>Tradução</span>
       </li>
-      <li title="Abstract Syntax Tree">
+      <li title="Abstract Syntax Tree" id="open-exe">
         <i class="fas fa-sitemap"></i>
         <span>AST</span>
-      </li>
+    </li>
       <li id="newProjectBtn" title="New Project">
         <i class="fas fa-folder-plus"></i>
         <span>New Project</span>
@@ -83,6 +82,10 @@
         <i class="fas fa-globe"></i>
         <span>Website</span>
       </li>
+      <li title="Calculator" id="open-calculator">
+        <i class="fas fa-calculator"></i>
+        <span>Calculator</span>
+    </li>
     </ul>
   </div>
 
@@ -100,7 +103,7 @@
       <input type="text" id="bug-title" name="bug-title" placeholder="Digite o título do bug" required />
 
       <label for="bug-body">Descrição</label>
-      <textarea id="bug-body" name="bug-body" placeholder="Descreva o problema" required></textarea>
+      <textarea id="bug-body" name="bug-body" placeholder="Descreva o problema e elogie o programador!" required></textarea>
 
       <label>Severidade</label>
       <div class="severity-options">
@@ -181,8 +184,7 @@
         <div class="terminal-content hidden" id="terminal-tcmd">
           <div class="terminal-header">CMD Terminal</div>
           <div class="terminal-body">
-            <div id="cmd-output" style="height: 150px; overflow-y: auto; background: #000; color: #0f0; padding: 10px; font-family: monospace;"></div>
-            <input id="cmd-input" type="text" placeholder="Digite um comando..." style="width: 100%; padding: 10px; font-family: monospace;"/>
+            <div id="terminal-container" style="height: 300px;"></div>
           </div>
         </div>
       </div>
@@ -229,8 +231,6 @@
     </section>
   </div>
 </div>
-<div id="terminal"></div>
-
 
   <div class="status-bar">
     <div class="status-item">Ready</div>
@@ -242,14 +242,11 @@
   <script>
     require.config({ paths: { vs: 'node_modules/monaco-editor/min/vs' } });
   </script>
-  <script src="node_modules/xterm/lib/xterm.js"></script>
   <script src="./js/renderer.js"></script>
   <script src="./js/hamburguer.js"></script>
   <script src="./js/modal.js"></script>
   <script src="./js/terminal.js"></script>
   <script src="./js/report.js" type="module"></script>
   <script src="./js/index.js" type="module"></script>
-  <script src="node_modules/xterm/lib/xterm.js"></script>
-    <script src="node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
 </body>
 </html>
