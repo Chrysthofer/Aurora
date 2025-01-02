@@ -3,6 +3,7 @@ const { autoUpdater } = require('electron-updater');
 const { exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const fse = require('fs-extra'); // fs-extra makes it easier to copy directories
 
 
 (async () => {
@@ -147,19 +148,44 @@ ipcMain.handle('getCurrentFolder', () => {
   return global.currentFolderPath || null;
 });
 
-// Update the refreshFolder handler to use listFiles instead of readDirectory
-ipcMain.handle('refreshFolder', async () => {
-  // If there's no current folder, return null
-  if (!global.currentFolderPath) {
-    return null;
+
+// Add this function to scan directory recursively
+async function scanDirectory(dirPath) {
+  const items = await fse.readdir(dirPath, { withFileTypes: true });
+  const files = await Promise.all(
+    items.map(async item => {
+      const fullPath = path.join(dirPath, item.name);
+      if (item.isDirectory()) {
+        const children = await scanDirectory(fullPath);
+        return {
+          name: item.name,
+          path: fullPath,
+          type: 'directory',
+          children
+        };
+      }
+      return {
+        name: item.name,
+        path: fullPath,
+        type: 'file'
+      };
+    })
+  );
+  return files;
+}
+
+// Update the refreshFolder handler
+ipcMain.handle('refreshFolder', async (event, projectPath) => {
+  try {
+    if (!projectPath) {
+      throw new Error('No project path provided');
+    }
+    const files = await scanDirectory(projectPath);
+    return { files };
+  } catch (error) {
+    console.error('Error scanning directory:', error);
+    throw error;
   }
-  
-  // Re-read the current folder's contents using listFiles instead of readDirectory
-  const files = await listFiles(global.currentFolderPath);
-  return {
-    files,
-    path: global.currentFolderPath
-  };
 });
 
 
@@ -385,6 +411,43 @@ ipcMain.handle('compile-code', async (event, { compiler, filePath, workingDir })
 });
 
 
+// Add these handlers in main.js
+ipcMain.handle('dialog:showOpen', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openFile'],
+    filters: [
+      { name: 'Sapho Project Files', extensions: ['spf'] }
+    ]
+  });
+  return result;
+});
+
+// Handler for getting project info
+ipcMain.handle('project:getInfo', async (_, spfPath) => {
+  try {
+    // Debug log
+    console.log('Attempting to read project info from:', spfPath);
+
+    if (!spfPath) {
+      throw new Error('No project file path provided');
+    }
+
+    // Ensure the path exists
+    const exists = await fse.pathExists(spfPath);
+    if (!exists) {
+      throw new Error(`Project file not found at: ${spfPath}`);
+    }
+
+    // Read and parse the project file
+    const projectData = await fse.readJSON(spfPath);
+    console.log('Successfully read project data');
+    
+    return projectData;
+  } catch (error) {
+    console.error('Error reading project info:', error);
+    throw error;
+  }
+});
 
 // Manipulador para abrir o explorador de arquivos
 ipcMain.handle('dialog:openDirectory', async () => {
@@ -398,35 +461,121 @@ ipcMain.handle('dialog:openDirectory', async () => {
   return result.filePaths[0]; // Caminho da pasta selecionada
 });
 
+// SPF file structure
+class ProjectFile {
+  constructor(projectPath) {
+    this.metadata = {
+      projectName: path.basename(projectPath),
+      createdAt: new Date().toISOString(),
+      lastModified: new Date().toISOString(),
+      computerName: process.env.COMPUTERNAME || os.hostname(),
+      appVersion: app.getVersion(),
+      projectPath: projectPath
+    };
+    
+    this.structure = {
+      basePath: projectPath,
+      folders: [
+        { path: 'Hardware/Proc_IP', exists: false },
+        { path: 'Hardware/Quartus_Files', exists: false },
+        { path: 'Software', exists: false }
+      ]
+    };
+  }
+
+  toJSON() {
+    return {
+      metadata: this.metadata,
+      structure: this.structure
+    };
+  }
+}
+
+// Handle SPF file creation
 ipcMain.handle('project:createStructure', async (_, projectPath, spfPath) => {
   try {
-    // Cria as pastas do projeto
+    // Create project folders
     const hardwarePath = path.join(projectPath, 'Hardware');
     const softwarePath = path.join(projectPath, 'Software');
     const procIPPath = path.join(hardwarePath, 'Proc_IP');
     const quartusFilesPath = path.join(hardwarePath, 'Quartus_Files');
+    const saphoComponentsPath = path.resolve('./saphoComponents');
 
-    fs.mkdirSync(procIPPath, { recursive: true });
-    fs.mkdirSync(quartusFilesPath, { recursive: true });
-    fs.mkdirSync(softwarePath, { recursive: true });
+    // Create directories
+    await fse.ensureDir(procIPPath);
+    await fse.ensureDir(quartusFilesPath);
+    await fse.ensureDir(softwarePath);
 
-    // Cria o arquivo .spf
-    const spfContent = `
-      Project Name: ${path.basename(projectPath)}
-      Structure:
-        - Hardware/
-          - Proc_IP/
-          - Quartus_Files/
-        - Software/
-    `;
-    fs.writeFileSync(spfPath, spfContent.trim(), 'utf-8');
+    // Copy saphoComponents
+    if (await fse.pathExists(saphoComponentsPath)) {
+      await fse.copy(saphoComponentsPath, procIPPath);
+      console.log('Sapho components copied successfully');
+    } else {
+      console.warn('Warning: saphoComponents folder not found');
+    }
 
-    return true; // Retorna sucesso
+    // Create and save SPF file
+    const projectFile = new ProjectFile(projectPath);
+    await fse.writeJSON(spfPath, projectFile.toJSON(), { spaces: 2 });
+
+    // Scan the directory to return the initial file tree
+    const files = await scanDirectory(projectPath);
+
+    return { success: true, projectData: projectFile.toJSON(), files, spfPath };
   } catch (error) {
     console.error('Error creating project structure:', error);
     throw error;
   }
 });
+
+// Handle SPF file opening
+ipcMain.handle('project:open', async (_, spfPath) => {
+  try {
+    console.log('Opening project from:', spfPath);
+
+    // Read and parse SPF file
+    const projectData = await fse.readJSON(spfPath);
+    
+    // Verify folder structure
+    const basePath = projectData.structure.basePath;
+    const verifiedStructure = await Promise.all(
+      projectData.structure.folders.map(async folder => {
+        const fullPath = path.join(basePath, folder.path);
+        const exists = await fse.pathExists(fullPath);
+        return { ...folder, exists };
+      })
+    );
+
+    projectData.structure.folders = verifiedStructure;
+    projectData.metadata.lastOpened = new Date().toISOString();
+
+    // Update SPF file with last opened time
+    await fse.writeJSON(spfPath, projectData, { spaces: 2 });
+
+    // Scan directory for file tree
+    const files = await scanDirectory(basePath);
+
+    return {
+      projectData,
+      files,
+      spfPath
+    };
+  } catch (error) {
+    console.error('Error opening project file:', error);
+    throw error;
+  }
+});
+
+// Handle project opening from Windows double-click
+app.on('second-instance', (event, commandLine) => {
+  const spfPath = commandLine[commandLine.length - 1];
+  if (spfPath.endsWith('.spf')) {
+    mainWindow.webContents.send('project:openFromSystem', spfPath);
+  }
+});
+
+// Handle file associations
+app.setAsDefaultProtocolClient('spf');
 
 ipcMain.handle('getFolderFiles', async (event, folderPath) => {
   try {
@@ -453,29 +602,4 @@ ipcMain.handle('getFolderFiles', async (event, folderPath) => {
     console.error('Error reading folder:', error);
     throw new Error('Failed to read folder');
   }
-});
-
-
-// Listen for the run-executable event
-ipcMain.on('run-executable', (event, exePath) => {
-  const child = spawn(exePath, [], { stdio: 'inherit' });
-
-  child.on('error', (err) => {
-    console.error(`Failed to start ${exePath}:`, err);
-  });
-
-  child.on('close', (code) => {
-    console.log(`${exePath} exited with code ${code}`);
-  });
-});
-
-// Open the calculator when requested from the renderer process
-ipcMain.on('open-calculator', () => {
-  exec('calc', (error, stdout, stderr) => {
-      if (error) {
-          console.error(`Error opening calculator: ${error}`);
-      } else {
-          console.log('Calculator opened successfully');
-      }
-  });
 });

@@ -36,6 +36,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   startDownload: () => ipcRenderer.send('start-download'),
   installUpdate: () => ipcRenderer.send('install-update'),
 
-  openExe: () => ipcRenderer.invoke('open-exe')
+  openExe: () => ipcRenderer.invoke('open-exe'),
+
+  showOpenDialog: () => ipcRenderer.invoke('dialog:showOpen'),
+  openProject: (path) => ipcRenderer.invoke('project:open', path),
+  createStructure: (projectPath, spfPath) => ipcRenderer.invoke('project:createStructure', projectPath, spfPath),
+  onOpenFromSystem: (callback) => ipcRenderer.on('project:openFromSystem', callback),
+  getProjectInfo: (path) => ipcRenderer.invoke('project:getInfo', path),
+  refreshFolder: (path) => ipcRenderer.invoke('refreshFolder', path)
 });
 

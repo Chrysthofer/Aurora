@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="./css/styles.css">
   <link rel="stylesheet" href="node_modules/monaco-editor/min/vs/editor/editor.main.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,400,0,0&icon_names=inventory_2" />
   <link rel="stylesheet" href="node_modules/@fortawesome/fontawesome-free/css/all.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/file-icon-vectors@1.0.0/dist/file-icon-vectors.min.css" />
   <link rel="stylesheet" href="./css/info.css">
@@ -15,6 +16,11 @@
   <link rel="stylesheet" href="./css/modal.css">
   <link rel="stylesheet" href="./css/terminal.css">
   <link rel="stylesheet" href="./css/report.css">
+  <link rel="stylesheet" href="./css/processorHub.css">
+  <link rel="stylesheet" href="./css/fileTree.css">
+  <link rel="stylesheet" href="./css/toolbar.css">
+  <link rel="stylesheet" href="./css/tabs.css">
+
 
 </head>
 <body class="theme-dark">
@@ -27,6 +33,10 @@
       <button id="openFolderBtn" class="toolbar-button">
         <i class="fas fa-folder"></i>
         <span>Open Folder</span>
+      </button>
+      <button id="openProjectBtn" class="toolbar-button">
+        <i class="fa-solid fa-box-open"></i>
+        <span>Open Project</span>
       </button>
       <button id="saveFileBtn" class="toolbar-button">
         <i class="fas fa-save"></i>
@@ -47,7 +57,6 @@
       <i  id="websiteLink" title="Visit Website"></i>
       <i  id="showInfo" title="Keyboard Shortcuts"></i>
       <i  id="openExplorerFolder" title="Open in File Explorer"></i>
-
     </div>
   </div>
 
@@ -79,7 +88,7 @@
         <span>Backup</span>
       </li>
       <li title="Visit Website">
-        <i class="fas fa-globe"></i>
+        <i class="fas fa-globe"  id="websiteLink" ></i>
         <span>Website</span>
       </li>
       <li title="Calculator" id="open-calculator">
@@ -88,9 +97,9 @@
     </li>
     </ul>
   </div>
+  
 
   <!-- Adicionar um botão de Bug Report -->
-
 <button id="open-bug-report">
   <i class="fa-solid fa-bug"></i>
 </button>
@@ -120,14 +129,11 @@
           <span class="severity-dot high"></span> Alta
         </label>
       </div>
-
       <button type="submit">Enviar</button>
       <button type="button" id="close-bug-report">Cancelar</button>
     </form>
   </div>
 </div>
-
-
 
   <!-- Modal Overlay -->
   <div id="newProjectModal" class="modal hidden">
@@ -148,6 +154,7 @@
       </div>
     </div>
   </div>
+  
 
   <div class="main-container">
     <!-- File Tree Section -->
@@ -163,7 +170,7 @@
     <!-- Editor and Terminal Section -->
     <div class="editor-terminal-container">
       <div class="editor-container">
-        <div id="tabs" class="tabs"></div>
+        <div id="tabs-container" class="tabs-container"></div>
         <div id="monaco-editor" class="monaco-editor"></div>
       </div>
       <div class="resizer-horizontal"></div>
@@ -248,5 +255,10 @@
   <script src="./js/terminal.js"></script>
   <script src="./js/report.js" type="module"></script>
   <script src="./js/index.js" type="module"></script>
+  <script src="./js/buttons.js" ></script>
+  <script src="./js/resize.js" type="module"></script>
+  <script src="./js/compiler.js" type="module"></script>
+  <script src="./js/fileTree.js" type="module"></script>
+  <script src="./js/tabManager.js" type="module"></script>
 </body>
 </html>
