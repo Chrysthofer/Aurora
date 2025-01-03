@@ -76,9 +76,9 @@ document.addEventListener('DOMContentLoaded', () => {
   
 
 
-  // Evento de compilação do CMM
+// Evento de compilação do CMM
 document.getElementById('cmmcomp').addEventListener('click', async () => {
-  if (!activeFile || compiling) return;
+  if (!this.activeTab || compiling) return; // Use this.activeTab para verificar o arquivo ativo
 
   activateTerminal('tcmm', 'terminal-tcmm'); // Foca no terminal TCMM
 
@@ -91,8 +91,8 @@ document.getElementById('cmmcomp').addEventListener('click', async () => {
     icon.className = 'fas fa-spinner fa-spin';
 
     const content = editor.getValue();
-    const inputDir = activeFile.substring(0, activeFile.lastIndexOf('\\') + 1);
-    const inputFile = activeFile.split('\\').pop();
+    const inputDir = this.activeTab.substring(0, this.activeTab.lastIndexOf('\\') + 1); // Usar this.activeTab
+    const inputFile = this.activeTab.split('\\').pop(); // Usar this.activeTab
 
     writeToTerminal('terminal-tcmm', 'Starting CMM compilation...', 'command');
     writeToTerminal('terminal-tcmm', `Input file: ${inputFile}`, 'info');
@@ -100,7 +100,7 @@ document.getElementById('cmmcomp').addEventListener('click', async () => {
     const result = await window.electronAPI.compile({
       compiler: '/compilers/cmmcomp.exe',
       content: content,
-      filePath: activeFile,
+      filePath: this.activeTab, // Usar this.activeTab
       workingDir: inputDir,
       outputPath: inputDir
     });
@@ -136,10 +136,9 @@ document.getElementById('cmmcomp').addEventListener('click', async () => {
   }
 });
 
-
 // Evento de compilação do ASM
 document.getElementById('asmcomp').addEventListener('click', async () => {
-  if (!activeFile || compiling) return;
+  if (!this.activeTab || compiling) return; // Verifique se o arquivo ativo está disponível
 
   activateTerminal('tasm', 'terminal-tasm'); // Foca no terminal TASM
 
@@ -149,21 +148,22 @@ document.getElementById('asmcomp').addEventListener('click', async () => {
   try {
     compiling = true;
     button.disabled = true;
-    icon.className = 'fas fa-spinner fa-spin';
+    icon.className = 'fas fa-spinner fa-spin'; // Altera o ícone para o modo de carregamento
 
     const content = editor.getValue();
-    const inputDir = activeFile.substring(0, activeFile.lastIndexOf('\\') + 1);
-    const inputFile = activeFile.split('\\').pop();
+    const inputDir = this.activeTab.substring(0, this.activeTab.lastIndexOf('\\') + 1); // Usando o caminho do arquivo ativo
+    const inputFile = this.activeTab.split('\\').pop(); // Usando o nome do arquivo ativo
 
     writeToTerminal('terminal-tasm', 'Starting ASM compilation...', 'command');
     writeToTerminal('terminal-tasm', `Input file: ${inputFile}`, 'info');
 
+    // Chamando o método de compilação com o compilador ASM
     const result = await window.electronAPI.compile({
-      compiler: '/compilers/asmcomp.exe',
+      compiler: '/compilers/asmcomp.exe',  // Caminho do compilador ASM
       content: content,
-      filePath: activeFile,
+      filePath: this.activeTab,           // Caminho do arquivo ativo
       workingDir: inputDir,
-      outputPath: inputDir
+      outputPath: inputDir               // Caminho de saída para o arquivo compilado
     });
 
     // Atualizando com a saída do compilador
@@ -193,9 +193,10 @@ document.getElementById('asmcomp').addEventListener('click', async () => {
   } finally {
     compiling = false;
     button.disabled = false;
-    icon.className = 'fa-solid fa-cube';
+    icon.className = 'fa-solid fa-cube';  // Restaura o ícone original
   }
 });
+
 
 
 // Initialize Terminal.js

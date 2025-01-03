@@ -43,6 +43,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   createStructure: (projectPath, spfPath) => ipcRenderer.invoke('project:createStructure', projectPath, spfPath),
   onOpenFromSystem: (callback) => ipcRenderer.on('project:openFromSystem', callback),
   getProjectInfo: (path) => ipcRenderer.invoke('project:getInfo', path),
-  refreshFolder: (path) => ipcRenderer.invoke('refreshFolder', path)
+  refreshFolder: (path) => ipcRenderer.invoke('refreshFolder', path),
+
+  writeFile: async (filePath, content) => {
+    return await ipcRenderer.invoke('write-file', filePath, content);
+  }
 });
 

@@ -86,7 +86,7 @@
   }
   
   .terminal-tabs .tab.active {
-    background: #444;
+    /* background: #444; */
     font-weight: bold;
   }
   
@@ -177,4 +177,37 @@
     font-family: monospace;
     padding: 10px;
     overflow-y: scroll;
+}
+
+/* Estilos para o botão Clear Terminal */
+#clear-terminal {
+  position: fixed;
+  bottom: 90px; /* Distância do fundo da tela */
+  right: 20px; /* Distância da direita da tela */
+  background-color: #f44336; /* Cor de fundo vermelha */
+  border-radius: 50%; /* Deixa o botão redondo */
+  width: 50px; /* Tamanho do botão */
+  height: 50px; /* Tamanho do botão */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Sombras suaves */
+  transition: transform 0.3s ease; /* Transição suave para o efeito de hover */
+  z-index: 9999; /* Garante que o botão ficará acima de outros elementos */
+}
+
+#clear-terminal i {
+  font-size: 24px; /* Tamanho do ícone */
+  color: white; /* Cor do ícone */
+}
+
+/* Efeito de hover - aumenta suavemente o botão */
+#clear-terminal:hover {
+  transform: scale(1.2); /* Aumenta o tamanho do botão */
+  cursor: pointer; /* Muda o cursor para indicar que é clicável */
+}
+
+/* Efeito de hover no ícone */
+#clear-terminal:hover i {
+  transform: scale(1.1); /* Aumenta suavemente o ícone */
 }

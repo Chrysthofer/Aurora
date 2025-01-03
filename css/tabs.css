@@ -1,11 +1,6 @@
 /* Tab container */
 #editor-tabs {
-    display: flex;
-    background-color: #252526;
-    border-bottom: 1px solid #3c3c3c;
-    overflow-x: auto;
-    min-height: 45px;
-    user-select: none;
+  height: 0px;
   }
   
   #editor-tabs::-webkit-scrollbar {
@@ -28,9 +23,10 @@
     padding: 0 10px;
     height: 35px;
     background-color: #2d2d2d;
-    border-right: 1px solid #3c3c3c;
+    border-right: 2px solid var(--border-color);
     color: #969696;
     cursor: pointer;
+    user-select: none;
     white-space: nowrap;
     min-width: 100px;
     max-width: 200px;
@@ -51,13 +47,39 @@
 
 /* Efeito de hover para outras abas */
 .tab:hover {
-  background-color: #f1f1f1;
+  background-color: #0078d4;
+}
+
+.tab {
+  cursor: grab;
+  user-select: none;
+}
+
+.tab.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+
+/* Drop indicator styling */
+.drop-indicator {
+  position: absolute;
+  height: 2px;
+  background-color: #fff; /* Azul semelhante ao VSCode */
+  width: 100%;
+  pointer-events: none;
+  transition: all 0.2s ease-in-out;
 }
 
 
+#tabs-container {
+  display: flex;
+  overflow-x: auto;
+  background: var(--background-color);
+  border-bottom: 1px solid var(--border-color);
+}
 /* Estilo ao passar o mouse em abas inativas */
 .tab:not(.active):hover {
-  background-color: #e0e0e0;
+  /* background-color: #e0e0e0; */
 }
   
   .tab i {
@@ -75,25 +97,22 @@
   
   /* Close button */
   .close-tab {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 20px;
     margin-left: 8px;
-    border-radius: 4px;
+    background: none;
     border: none;
-    background: transparent;
-    color: inherit;
-    font-size: 16px;
+    color: var(--text-color);
     cursor: pointer;
-    padding: 0;
-    transition: background-color 0.2s ease;
-  }
-  
-  .close-tab:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-  }
+    padding: 0 4px;
+    font-size: 16px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.close-tab:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
   
   /* Drag and drop styling */
   .tab.dragging {
@@ -120,11 +139,157 @@
   .tab {
     padding: 8px 16px;
     background-color: var(--bg-secondary);
-    border-right: 1px solid var(--border-color);
     display: flex;
     align-items: center;
-    gap: 8px;
+    /* gap: 8px; */
     min-width: 100px;
     max-width: 200px;
     font-size: 13px;
   }
+
+/*STYLES*/
+
+
+.tab {
+  flex: 1;
+  padding: 10px;
+  text-align: center;
+  background-color: #333;
+  color: #fff;
+  outline: none;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  border-right: #0078d4 1px solid;
+
+}
+
+.tab:hover {
+  background-color: #0078d4;
+}
+
+/* Quando estiver arrastando, desativa a transição */
+.tabs-container.dragging .tab {
+  transition: none;
+}
+
+#tabs {
+  display: flex;
+  background: #1e1e1e;
+  border-bottom: 1px solid #333;
+  height: 36px;
+  overflow-x: scroll;
+  overflow-y: none;
+}
+
+.tabs-container {
+  display: flex;
+  flex-direction: row;
+  background: #1e1e1e;
+  border-bottom: 1px solid #333;
+  height: 46px;
+  overflow-x: auto; /* Allow horizontal scrolling */
+  overflow-y: hidden; /* Prevent vertical scrolling */
+}
+
+.tab-content {
+  padding: 0 8px;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tab-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #969696;
+}
+
+
+.tab-close {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: #969696;
+  opacity: 0.7;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.tab-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  opacity: 1;
+}
+
+.tab.modified .tab-title::after {
+  content: '●';
+  margin-left: 4px;
+  color: #007acc;
+}
+
+
+.tabs {
+  background-color: var(--bg-secondary);
+  display: flex;
+  flex-direction: row; /* Ensure horizontal layout */
+  padding: 0;
+  overflow-x: auto;
+  user-select: none;
+}
+
+.tab-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab-close {
+  opacity: 0.7;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  padding: 2px;
+}
+
+.tab-close:hover {
+  background-color: var(--hover-color);
+  opacity: 1;
+}
+
+
+/*ARE YOU SURE?*/
+.confirm-dialog {
+  padding: 20px;
+  background: var(--background-color);
+  color: var(--text-color);
+}
+
+.dialog-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.dialog-buttons button {
+  padding: 5px 15px;
+  cursor: pointer;
+  background: var(--background-lighter);
+  border: 1px solid var(--border-color);
+  color: var(--text-color);
+  border-radius: 4px;
+}
+
+.dialog-buttons button:hover {
+  background: var(--background-lighter-hover);
+}

@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="./css/fileTree.css">
   <link rel="stylesheet" href="./css/toolbar.css">
   <link rel="stylesheet" href="./css/tabs.css">
+  <link rel="stylesheet" href="./css/rainbow.css">
 
 
 </head>
@@ -97,7 +98,6 @@
     </li>
     </ul>
   </div>
-  
 
   <!-- Adicionar um botão de Bug Report -->
 <button id="open-bug-report">
@@ -170,16 +170,19 @@
     <!-- Editor and Terminal Section -->
     <div class="editor-terminal-container">
       <div class="editor-container">
-        <div id="tabs-container" class="tabs-container"></div>
+        <div id="tabs-container" class="tabs-container">
+          <!-- Tabs will be dynamically inserted here -->
+        </div>
         <div id="monaco-editor" class="monaco-editor"></div>
       </div>
       <div class="resizer-horizontal"></div>
       <div id="terminal-container" class="terminal-container">
         <div class="terminal-tabs">
-          <button class="tab active" data-terminal="tcmm">TCMM</button>
-          <button class="tab" data-terminal="tasm">TASM</button>
-          <button class="tab" data-terminal="tcmd">TCMD</button>
+          <button class="tab active" data-terminal="tcmm"><i class="fa-solid fa-c"></i><i class="fa-solid fa-plus-minus"></i> TCMM</button>
+          <button class="tab" data-terminal="tasm"><i class="fa-solid fa-cube"></i> TASM</button>
+          <button class="tab" data-terminal="tcmd"><i class="fa-solid fa-terminal"></i> TCMD</button>
         </div>
+        <button id="clear-terminal" title="Clear Terminal" class="toolbar-button"><i class="fa-solid fa-trash-can"></i></button>
         <div class="terminal-content" id="terminal-tcmm">
           <div class="terminal-header">TCMM Terminal</div>
           <div class="terminal-body">Bem-vindo ao Terminal TCMM!</div>
@@ -194,7 +197,6 @@
             <div id="terminal-container" style="height: 300px;"></div>
           </div>
         </div>
-      </div>
       </div>
     </div>
   </div>

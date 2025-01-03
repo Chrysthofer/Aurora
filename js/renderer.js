@@ -7,6 +7,40 @@ let aiAssistantVisible = false;
 let aiAssistantContainer = null;
 let currentProvider = 'chatgpt'; // or 'claude'
 
+// SHOW DIALOG =====================================================================================================================
+function showConfirmDialog(title, message) {
+  return new Promise((resolve) => {
+    const dialog = document.createElement('dialog');
+    dialog.innerHTML = `
+      <div class="confirm-dialog">
+        <h3>${title}</h3>
+        <p>${message}</p>
+        <div class="dialog-buttons">
+          <button id="cancelButton">Cancel</button>
+          <button id="confirmButton">Save</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(dialog);
+    dialog.showModal();
+
+    const confirmButton = dialog.querySelector('#confirmButton');
+    const cancelButton = dialog.querySelector('#cancelButton');
+
+    confirmButton.onclick = () => {
+      dialog.close();
+      dialog.remove();
+      resolve(true);
+    };
+
+    cancelButton.onclick = () => {
+      dialog.close();
+      dialog.remove();
+      resolve(false);
+    };
+  });
+}
 //MONACO EDITOR ========================================================================================================================================================
 
 async function initMonaco() {
@@ -47,6 +81,91 @@ async function initMonaco() {
 class TabManager {
   static tabs = new Map(); // Store tab information
   static activeTab = null;
+  static editorStates = new Map();
+  static unsavedChanges = new Set(); // Track files with unsaved changes
+  static initialContents = new Map(); // Track initial content of files
+
+
+// Rename saveFile to saveCurrentFile for consistency
+static async saveCurrentFile() {
+  const currentPath = this.activeTab;
+  if (!currentPath) return;
+
+  try {
+    const content = editor.getValue();
+    await window.electronAPI.writeFile(currentPath, content);
+    this.markFileAsSaved(currentPath);
+    // Update initial content after successful save
+    this.initialContents.set(currentPath, content);
+    writeToTerminal(`File saved: ${currentPath}`, 'success');
+  } catch (error) {
+    console.error('Error saving file:', error);
+    writeToTerminal(`Error saving file: ${error.message}`, 'error');
+  }
+}
+
+
+// Add these methods to mark files as modified/saved
+static markFileAsModified(filePath) {
+  if (!filePath) return;
+  
+  this.unsavedChanges.add(filePath);
+  const tab = document.querySelector(`.tab[data-path="${CSS.escape(filePath)}"]`);
+  if (tab) {
+    const closeButton = tab.querySelector('.close-tab');
+    closeButton.innerHTML = '•';
+    closeButton.style.color = '#ffd700'; // Gold color for unsaved changes
+    closeButton.style.fontSize = '20px';
+  }
+}
+
+static markFileAsSaved(filePath) {
+  if (!filePath) return;
+  
+  this.unsavedChanges.delete(filePath);
+  const tab = document.querySelector(`.tab[data-path="${CSS.escape(filePath)}"]`);
+  if (tab) {
+    const closeButton = tab.querySelector('.close-tab');
+    closeButton.innerHTML = '×';
+    closeButton.style.color = ''; // Reset to default color
+    closeButton.style.fontSize = ''; // Reset to default size
+  }
+}
+
+  // Add this method to save editor state
+  static saveEditorState(filePath) {
+    if (!editor || !filePath) return;
+    
+    const state = {
+        selections: editor.getSelections(),
+        viewState: editor.saveViewState(),
+        scrollPosition: {
+            top: editor.getScrollTop(),
+            left: editor.getScrollLeft()
+        }
+    };
+    
+    this.editorStates.set(filePath, state);
+}
+
+
+// Add this method to restore editor state
+static restoreEditorState(filePath) {
+    if (!editor || !filePath) return;
+    
+    const state = this.editorStates.get(filePath);
+    if (state) {
+        // Restore view state (includes scroll position and folded code sections)
+        if (state.viewState) {
+            editor.restoreViewState(state.viewState);
+        }
+        
+        // Restore selections
+        if (state.selections && state.selections.length > 0) {
+            editor.setSelections(state.selections);
+        }
+    }
+}
 
   static getFileIcon(filename) {
     const extension = filename.split('.').pop().toLowerCase();
@@ -68,82 +187,187 @@ class TabManager {
     return iconMap[extension] || 'fas fa-file';
   }
 
-  static async addTab(filePath, content) {
-    if (this.tabs.has(filePath)) {
-      this.activateTab(filePath);
-      return;
+  static addTab(filePath, content) {
+    const tabContainer = document.querySelector('#tabs-container');
+    if (!tabContainer) {
+        console.error('Error: #tabs-container not found in DOM.');
+        return;
     }
 
-    const tabsContainer = document.getElementById('editor-tabs');
-    const tab = document.createElement('div');
-    const filename = filePath.split('/').pop();
+    // Store initial content
+    this.initialContents.set(filePath, content);
 
-    tab.className = 'tab';
+    // Add model change listener
+    const model = editor.getModel();
+    if (model) {
+      let isFirstChange = true;
+      model.onDidChangeContent(() => {
+        // Only check for real changes
+        const currentContent = editor.getValue();
+        const originalContent = this.initialContents.get(this.activeTab);
+        
+        if (currentContent !== originalContent) {
+          this.markFileAsModified(this.activeTab);
+        } else {
+          this.markFileAsSaved(this.activeTab);
+        }
+      });
+    }
+
+    // Create tab
+    const tab = document.createElement('div');
+    tab.classList.add('tab');
     tab.setAttribute('data-path', filePath);
+    tab.setAttribute('draggable', 'true'); // Make tab draggable
+
+    tab.setAttribute('title', filePath); // Caminho completo será exibido como dica de ferramenta
+
+    // Create tab content with icon, name, and close button
     tab.innerHTML = `
-      <i class="${this.getFileIcon(filename)}"></i>
-      <span class="tab-name">${filename}</span>
-      <button class="close-tab">×</button>
+        <i class="${this.getFileIcon(filePath.split('\\').pop())}"></i>
+        <span class="tab-name">${filePath.split('\\').pop()}</span>
+        <button class="close-tab" title="Close">×</button>
     `;
 
+    // Add drag and drop event listeners
+    this.addDragListeners(tab);
+
+    // Add click events (your existing click handlers)
     tab.addEventListener('click', () => this.activateTab(filePath));
-    tab.querySelector('.close-tab').addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.closeTab(filePath);
+    const closeBtn = tab.querySelector('.close-tab');
+    closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.closeTab(filePath);
     });
 
-    tabsContainer.appendChild(tab);
+    // Add to container
+    tabContainer.appendChild(tab);
     this.tabs.set(filePath, content);
     this.activateTab(filePath);
-
-    this.updateEditorContent(filePath);
-
+    
   }
 
-  static activateTab(filePath) {
-    const tabs = document.querySelectorAll('.tab');
-    
-    // Remover a classe "active" de todas as abas
-    tabs.forEach(tab => tab.classList.remove('active'));
+  static addDragListeners(tab) {
+    tab.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/plain', tab.getAttribute('data-path'));
+      tab.classList.add('dragging');
+  
+      // Desativa a transição para todas as abas
+      const tabContainer = tab.parentElement;
+      if (tabContainer) {
+        tabContainer.classList.add('dragging');
+      }
+    });
+  
+    tab.addEventListener('dragend', () => {
+      tab.classList.remove('dragging');
+  
+      // Reativa a transição para todas as abas
+      const tabContainer = tab.parentElement;
+      if (tabContainer) {
+        tabContainer.classList.remove('dragging');
+      }
+    });
+  
+    tab.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      const draggingTab = document.querySelector('.tab.dragging');
+      if (draggingTab && draggingTab !== tab) {
+        const tabContainer = tab.parentElement;
+        const rect = tab.getBoundingClientRect();
+        const afterElement = (e.clientX - rect.left) > (rect.width / 2);
+  
+        if (afterElement) {
+          tab.after(draggingTab);
+        } else {
+          tab.before(draggingTab);
+        }
+      }
+    });
+  }
+  
 
-    // Identificar e ativar a aba correspondente
-    const activeTab = document.querySelector(`.tab[data-path="${filePath}"]`);
-    if (activeTab) {
-        // Adiciona a classe "active" na aba clicada
-        activeTab.classList.add('active');
-        
-        // Atualiza a aba ativa no TabManager
-        this.activeTab = filePath;
 
-        // Imprimir o caminho do arquivo da aba clicada
-        console.log(`Aba clicada: ${filePath}`);
+// Modify your existing activateTab method
+static activateTab(filePath) {
+  // Save the state of the current tab before switching
+  if (this.activeTab) {
+      this.saveEditorState(this.activeTab);
+  }
 
-        // Atualiza o conteúdo do Monaco Editor com base na aba ativa
-        this.updateEditorContent(filePath);
-    }
+  const tabs = document.querySelectorAll('.tab');
+  tabs.forEach(tab => tab.classList.remove('active'));
+
+  const activeTab = document.querySelector(`.tab[data-path="${CSS.escape(filePath)}"]`);
+  if (activeTab) {
+      activeTab.classList.add('active');
+      this.activeTab = filePath;
+      window.activeTab = this.activeTab;  // Salve no objeto global window
+
+      // Update editor content
+      this.updateEditorContent(filePath);
+      
+      // Restore the state of the new tab
+      this.restoreEditorState(filePath);
+  }
 }
 
 
+  static async closeTab(filePath) {
+    if (this.unsavedChanges.has(filePath)) {
+      const result = await showConfirmDialog(
+        'Unsaved Changes',
+        'This file has unsaved changes. Do you want to save before closing?'
+      );
+      
+      if (result) {
+        await this.saveCurrentFile();
+      }
+    }
 
-  static closeTab(filePath) {
-    const tab = document.querySelector(`.tab[data-path="${filePath}"]`);
+    const tab = document.querySelector(`.tab[data-path="${CSS.escape(filePath)}"]`);
     if (!tab) return;
 
+    // Remove the tab element
     tab.remove();
+    this.editorStates.delete(filePath);
+    
+    // Remove from our tabs map
     this.tabs.delete(filePath);
+    this.unsavedChanges.delete(filePath);
+    this.initialContents.delete(filePath); // Clean up initial content
 
+
+    // If we're closing the active tab
     if (this.activeTab === filePath) {
       const remainingTabs = Array.from(this.tabs.keys());
       if (remainingTabs.length > 0) {
-        this.activateTab(remainingTabs[0]);
+          this.activateTab(remainingTabs[0]);
       } else {
-        if (editor) {
-          editor.setValue('');
           this.activeTab = null;
-        }
+          if (editor) {
+              editor.getModel()?.dispose();
+              editor.setModel(monaco.editor.createModel('', 'plaintext'));
+          }
       }
-    }
   }
+}
+
+// Add this method to save the current file
+static async saveFile(filePath = null) {
+  const currentPath = filePath || this.activeTab;
+  if (!currentPath) return;
+
+  try {
+    const content = editor.getValue();
+    await window.electronAPI.writeFile(currentPath, content);
+    this.markFileAsSaved(currentPath);
+    writeToTerminal(`File saved: ${currentPath}`, 'success');
+  } catch (error) {
+    console.error('Error saving file:', error);
+    writeToTerminal(`Error saving file: ${error.message}`, 'error');
+  }
+}
   
   static updateEditorContent(filePath) {
     const content = this.tabs.get(filePath); // Obtém o conteúdo da aba ativa
@@ -173,6 +397,8 @@ class TabManager {
         // Atualiza o modelo do Monaco Editor com o novo conteúdo e linguagem
         editor.getModel()?.dispose();
         editor.setModel(monaco.editor.createModel(content, language));
+    } else {
+        console.error(`No content found for ${filePath}`);
     }
 }
 
@@ -192,7 +418,23 @@ function initTabs() {
 // Add this to your window.onload or initialization code
 window.addEventListener('load', () => {
   initTabs();
+
 });
+
+function initializeSaveSystem() {
+  // Add save button click handler
+  document.getElementById('saveFileBtn').addEventListener('click', () => {
+    TabManager.saveCurrentFile();
+  });
+
+  // Add keyboard shortcut for save (Ctrl+Shift+S)
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      TabManager.saveCurrentFile();
+    }
+  });
+}
 
 //FILETREE ============================================================================================================================================================
 
@@ -401,7 +643,7 @@ document.getElementById('openProjectBtn').addEventListener('click', async () => 
       await loadProject(currentProjectPath);
     }
   } catch (error) {
-    console.error('Error opening project:', error);
+    //console.error('Error opening project:', error);
   }
 });
 
@@ -551,7 +793,7 @@ async function loadProject(spfPath) {
     updateProjectInfo(result.projectData.metadata);
 
   } catch (error) {
-    console.error('Error loading project:', error);
+    //console.error('Error loading project:', error);
     showErrorDialog('Failed to load project', error.message);
   }
 }
@@ -897,12 +1139,13 @@ function setupAIAssistantResize(resizer) {
 window.onload = () => {
     initMonaco();
     initAIAssistant();
-
+    initializeSaveSystem();
+    
     // Add AI Assistant button to toolbar
     const toolbar = document.querySelector('.toolbar');
     const aiButton = document.createElement('button');
 
-    aiButton.className = 'toolbar-icon';
+    aiButton.className = 'toolbar-icon rainbow btn';
     aiButton.innerHTML = '<i class="fas fa-robot"></i>';
     aiButton.title = 'Toggle AI Assistant';
     aiButton.addEventListener('click', toggleAIAssistant);
@@ -938,3 +1181,31 @@ window.onload = () => {
         }, 300);
     });
 };
+
+
+// WIPE OUT TERMINAL ========================================================================================================================================================
+document.getElementById('clear-terminal').addEventListener('click', () => {
+  // Identificar o terminal ativo
+  const activeTerminal = document.querySelector('.terminal-content:not(.hidden)'); // Terminal ativo
+  console.log("Limpar terminal1");
+
+  if (activeTerminal) {
+    const terminalId = activeTerminal.id; // Obtém o ID do terminal ativo
+
+    if (terminalId === 'terminal-tcmm') {
+      console.log("Limpar terminal2");
+      // Substituir o conteúdo do terminal TCMM pelo estado inicial
+      activeTerminal.innerHTML = `
+        <div class="terminal-header">TCMM Terminal</div>
+        <div class="terminal-body">Bem-vindo ao Terminal TCMM! Clean</div>
+      `;
+    } else if (terminalId === 'terminal-tasm') {
+      console.log("Limpar terminal3");
+      // Substituir o conteúdo do terminal TASM pelo estado inicial
+      activeTerminal.innerHTML = `
+        <div class="terminal-header">TASM Terminal</div>
+        <div class="terminal-body">Bem-vindo ao Terminal TASM! Clean</div>
+      `;
+    }
+  }
+});

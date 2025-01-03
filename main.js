@@ -603,3 +603,15 @@ ipcMain.handle('getFolderFiles', async (event, folderPath) => {
     throw new Error('Failed to read folder');
   }
 });
+
+//SAVE FILE
+
+// In main.js
+ipcMain.handle('write-file', async (event, filePath, content) => {
+  try {
+    await fs.promises.writeFile(filePath, content, 'utf8');
+    return true;
+  } catch (error) {
+    throw error;
+  }
+});
